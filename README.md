@@ -90,7 +90,8 @@ El profesional podrá:
 
 ### Perfil de usuario
 
-<img width="722" height="454" alt="image" src="https://github.com/user-attachments/assets/40c20a97-7235-45b6-8c14-4d44b3e0cab4" />
+<img width="723" height="451" alt="image" src="https://github.com/user-attachments/assets/b0d9cc5c-e97c-42d1-aab5-68e0c0d52851" />
+
 
 
 
