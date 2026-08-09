@@ -123,13 +123,26 @@ Redirigido al inicio de sesión.
 <img width="481" height="804" alt="image" src="https://github.com/user-attachments/assets/000dc09b-5c8e-4ea6-a055-952790bd31e5" />
 
 
-## 3. Diagrama Entidad-Relación
+## 3. Dependencias y tecnologías
+
+| Área | Tecnología |
+|---|---|
+| Frontend | React |
+| Backend | Node.js + Express |
+| Base de datos | PostgreSQL |
+| Autenticación | JWT |
+| Contraseñas | bcrypt |
+| Imágenes | Cloudinary + Multer |
+| Contacto | WhatsApp Deep Link |
+
+
+## 4. Diagrama Entidad-Relación
 
 [Aquí irá el DER]
 
 ---
 
-## 4. Arquitectura del sistema
+## 5. Arquitectura del sistema
 
 [Aquí irá el diagrama de arquitectura]
 
