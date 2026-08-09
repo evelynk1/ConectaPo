@@ -96,29 +96,32 @@ El profesional podrá:
 
 ---
 
-## 2. Diagramas BPMN
+## 2. Definición de la navegación entre las vistas
 
-### Registro de usuario
+La aplicación ConectaPo se divide en vistas públicas y privadas.
 
-[imagen]
+Las vistas públicas pueden ser accedidas sin iniciar sesión e incluyen la
+página principal, el registro, el inicio de sesión, la galería de
+publicaciones y el detalle de una publicación.
 
-### Publicación de servicio
+Las vistas privadas requieren que el usuario haya iniciado sesión. Estas
+incluyen funcionalidades como el perfil, la creación y gestión de
+publicaciones, la disponibilidad y las solicitudes de reserva.
 
-[imagen]
+El sistema contempla dos roles principales: Cliente y Profesional. La
+navegación y las funcionalidades disponibles dependerán del rol del usuario.
 
-### Reserva de servicio
+Para controlar el acceso a las vistas privadas, el frontend almacenará los
+datos necesarios de la sesión del usuario, incluyendo su identificador,
+información básica, rol y token de autenticación.
 
-[imagen]
+Cuando un usuario no autenticado intente acceder a una vista privada, será
+Redirigido al inicio de sesión.
 
-### Evaluación y reputación
+### Diagrama de navegación
 
-[imagen]
+<img width="481" height="804" alt="image" src="https://github.com/user-attachments/assets/000dc09b-5c8e-4ea6-a055-952790bd31e5" />
 
-### Reclamos y moderación
-
-[imagen]
-
----
 
 ## 3. Diagrama Entidad-Relación
 
