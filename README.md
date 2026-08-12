@@ -140,13 +140,257 @@ Redirigido al inicio de sesión.
 
 ## 4. Diagrama Entidad-Relación
 
-[Aquí irá el DER]
+<img width="2938" height="2061" alt="ConectaPo_BD_09 08 2026" src="https://github.com/user-attachments/assets/2262321d-55fc-48f0-809a-6f499209db80" />
+
 
 ---
 
-## 5. Arquitectura del sistema
+## 5. Contrato de la API REST
 
-[Aquí irá el diagrama de arquitectura]
+Bienvenido a la documentación oficial de la API de Conectapo. Esta API está estructurada bajo una arquitectura por esquemas (`auth`, `negocio`, `soporte`) para separar responsabilidades y asegurar la integridad de los datos.
+
+---
+
+## 1. Módulo de Autenticación (`/api/auth`)
+Gestiona el acceso de los usuarios a la plataforma.
+
+### Registro de Usuario
+Permite a un nuevo cliente o profesional crear su cuenta en la plataforma. Por defecto, requiere definir la comuna para optimizar las búsquedas locales.
+
+- **URL:** `/api/auth/registro`
+- **Método:** `POST`
+- **Body (JSON):**
+  ```json
+  {
+    "rut": "11222333-4",
+    "telefono": "+56912345678",
+    "email": "juan.gasfiter@email.com",
+    "password": "Password123!",
+    "rol": "PROFESIONAL", // Puede ser 'CLIENTE' o 'PROFESIONAL'
+    "comuna_id": 15 // ID de la comuna donde reside u opera por defecto
+  }
+
+```
+
+* **Respuesta Exitosa (201 Created):**
+```json
+{
+  "mensaje": "Usuario registrado con éxito.",
+  "token": "eyJhbGciOiJIUzI1NiIsIn...", // JWT para futuras peticiones
+  "usuario": {
+    "id": "uuid-1234",
+    "rol": "PROFESIONAL"
+  }
+}
+
+```
+
+### Iniciar Sesión
+
+Valida las credenciales y devuelve el token de acceso (JWT) para interactuar con las rutas protegidas.
+
+* **URL:** `/api/auth/login`
+* **Método:** `POST`
+* **Body (JSON):**
+```json
+{
+  "email": "juan.gasfiter@email.com",
+  "password": "Password123!"
+}
+
+```
+
+
+* **Respuesta Exitosa (200 OK):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsIn...",
+  "usuario": {
+    "id": "uuid-1234",
+    "email": "juan.gasfiter@email.com",
+    "rol": "PROFESIONAL",
+    "avatar_url": null
+  }
+}
+
+```
+
+---
+
+## 2. Módulo de Negocios y Oficios (`/api/publicaciones`)
+
+Maneja el directorio de servicios, precios en pesos chilenos (CLP) y el contador de popularidad.
+
+### Listar Publicaciones (Buscador)
+
+Endpoint público para buscar oficios. Permite filtrar dinámicamente por parámetros en la URL (Query Params) para encontrar la pega exacta en el sector indicado.
+
+* **URL:** `/api/publicaciones`
+* **Método:** `GET`
+* **Query Params (Opcionales):**
+* `?comuna_id=15` (Filtra por comuna)
+* `?oficio_id=3` (Filtra por tipo de oficio, ej: Gásfiter)
+
+
+* **Respuesta Exitosa (200 OK):**
+```json
+[
+  {
+    "id": "uuid-9876",
+    "titulo": "Instalación de Calefont SEC",
+    "oficio": "Gásfiter",
+    "precio_base": 25000, // Siempre representado en CLP como número entero
+    "es_horario_conversable": false, // Si es true, oculta el calendario en el frontend
+    "evaluacion_promedio": 2.8, // Escala del 1 (Rojo) al 3 (Verde)
+    "foto_url_1": "[https://cloudinary.com/](https://cloudinary.com/)..."
+  }
+]
+
+```
+
+### Crear Publicación
+
+Endpoint protegido. Permite a un 'PROFESIONAL' publicar un nuevo servicio.
+
+* **URL:** `/api/publicaciones`
+* **Método:** `POST`
+* **Headers:** `Authorization: Bearer <token>`
+* **Body (JSON):**
+```json
+{
+  "oficio_id": 3,
+  "comuna_id": 15,
+  "titulo": "Instalación de Calefont SEC",
+  "descripcion": "Instalación y mantención garantizada en todo el sector oriente.",
+  "precio_base": 25000,
+  "es_horario_conversable": false,
+  "foto_url_1": "[https://cloudinary.com/foto1.jpg](https://cloudinary.com/foto1.jpg)"
+}
+
+```
+
+
+* **Respuesta Exitosa (201 Created):**
+```json
+{
+  "mensaje": "Publicación creada exitosamente.",
+  "publicacion_id": "uuid-9876"
+}
+
+```
+
+### Registrar Vista (Estadísticas)
+
+Endpoint público y ligero. Se ejecuta en segundo plano cuando un cliente entra a un perfil, sumando +1 al contador de vistas para métricas comerciales.
+
+* **URL:** `/api/publicaciones/:id/vistas`
+* **Método:** `PATCH`
+* **Respuesta Exitosa (200 OK):**
+```json
+{
+  "mensaje": "Vista registrada.",
+  "contador_vistas": 142
+}
+
+```
+
+
+
+---
+
+## 3. Módulo de Calendario (`/api/bloques-horarios`)
+
+El corazón transaccional de Conectapo. Administra la disponibilidad y aplica la "Regla de 1 Hora" para evitar agendamientos estancados.
+
+### Generar Bloques Masivos
+
+Permite al profesional crear de una sola vez su agenda semanal (ej: de 8:00 a 17:00 hrs) sin tener que ingresar los bloques uno por uno.
+
+* **URL:** `/api/bloques-horarios/bulk`
+* **Método:** `POST`
+* **Headers:** `Authorization: Bearer <token>`
+* **Body (JSON):**
+```json
+{
+  "publicacion_id": "uuid-9876",
+  "fecha_inicio": "2026-08-15",
+  "fecha_fin": "2026-08-19",
+  "hora_inicio": "08:00",
+  "hora_fin": "17:00"
+}
+
+```
+
+* **Respuesta Exitosa (201 Created):**
+```json
+{
+  "mensaje": "45 bloques generados exitosamente."
+}
+
+```
+
+
+
+### Cambiar Estado de Bloque (Reserva)
+
+Se dispara cuando un cliente pincha un horario. Cambia el estado a 'PENDIENTE' y marca el timestamp de la solicitud. Si el profesional no confirma en 60 minutos, el cron-job del backend lo devuelve a 'DISPONIBLE'.
+
+* **URL:** `/api/bloques-horarios/:id/estado`
+* **Método:** `PATCH`
+* **Headers:** `Authorization: Bearer <token>`
+* **Body (JSON):**
+```json
+{
+  "estado": "PENDIENTE" // Estados permitidos: DISPONIBLE, PENDIENTE, OCUPADO
+}
+
+```
+
+
+* **Respuesta Exitosa (200 OK):**
+```json
+{
+  "mensaje": "Estado del bloque actualizado.",
+  "bloque": {
+    "id": "uuid-5555",
+    "estado": "PENDIENTE",
+    "timestamp_solicitud": "2026-08-10T15:30:00Z"
+  }
+}
+
+```
+
+---
+
+## 4. Módulo de Soporte (`/api/tickets`)
+
+Canal de comunicación directa entre los usuarios (clientes/profesionales) y la administración de la plataforma.
+
+### Generar Ticket
+
+Crea una solicitud de ayuda (Reclamo, Sugerencia, Solicitar nuevo oficio, etc.).
+
+* **URL:** `/api/tickets`
+* **Método:** `POST`
+* **Headers:** `Authorization: Bearer <token>`
+* **Body (JSON):**
+```json
+{
+  "tipo_ticket_id": 2, // ID referencial de la tabla maestra Tipos_Ticket
+  "mensaje": "Hola equipo, quisiera sugerir que agreguen el oficio de 'Cerrajero' para mi comuna."
+}
+
+```
+
+
+* **Respuesta Exitosa (201 Created):**
+```json
+{
+  "mensaje": "Ticket recibido. Nuestro equipo lo revisará pronto.",
+  "ticket_id": "uuid-7777",
+  "estado": "ENVIADO" // Ciclo de vida: ENVIADO -> ENTREGADO -> RESUELTO
+}
+
 
 ---
 
