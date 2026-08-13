@@ -46,20 +46,6 @@ El profesional podrá:
 
 ---
 
-# Tecnologías
-
-| Área | Tecnología |
-|---|---|
-| Frontend | React |
-| Backend | Node.js + Express |
-| Base de datos | PostgreSQL |
-| Autenticación | JWT |
-| Contraseñas | bcrypt |
-| Imágenes | Cloudinary + Multer |
-| Contacto | WhatsApp Deep Link |
-
----
-
 # Diseño del proyecto
 
 ## 1. Mockups
