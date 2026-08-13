@@ -135,7 +135,7 @@ Redirigido al inicio de sesión.
 | Autenticación | JWT |
 | Contraseñas | bcrypt |
 | Imágenes | Cloudinary + Multer |
-| Contacto | WhatsApp Deep Link |
+| Contacto | WhatsApp Deep Link + EMail |
 
 
 ## 4. Diagrama Entidad-Relación
