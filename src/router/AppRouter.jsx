@@ -14,13 +14,13 @@ import Registro from '../pages/public/Registro';
 // Páginas Privadas (Usuarios)
 import MiPerfil from '../pages/private/MiPerfil';
 import GestionCalendario from '../pages/private/GestionCalendario';
-import CrearTicket from '../pages/private/CrearTicket'; // <-- NUEVA
+import CrearTicket from '../pages/private/CrearTicket';
 
 // Páginas de Administración
 import DashboardAdmin from '../pages/admin/DashboardAdmin';
 import GestionOficios from '../pages/admin/GestionOficios';
 import GestionUbicaciones from '../pages/admin/GestionUbicaciones';
-import ResolucionTickets from '../pages/admin/ResolucionTickets'; // <-- NUEVA
+import ResolucionTickets from '../pages/admin/ResolucionTickets';
 
 // Errores
 import NotFound404 from '../pages/error/NotFound404';
@@ -28,7 +28,7 @@ import NotFound404 from '../pages/error/NotFound404';
 // Simulación de Autenticación (Temporal)
 const mockUser = {
     isAuthenticated: true,
-    rol: 'ADMIN', // Cambia a 'USUARIO' para probar las rutas del panel privado
+    rol: 'ADMIN',
 };
 
 // Componente para proteger rutas según el rol
@@ -69,7 +69,7 @@ export default function AppRouter() {
                 >
                     <Route path="perfil" element={<MiPerfil />} />
                     <Route path="calendario" element={<GestionCalendario />} />
-                    <Route path="tickets" element={<CrearTicket />} /> {/* <-- NUEVA */}
+                    <Route path="tickets" element={<CrearTicket />} />
                 </Route>
 
                 {/* ==========================================
@@ -86,7 +86,7 @@ export default function AppRouter() {
                     <Route index element={<DashboardAdmin />} />
                     <Route path="oficios" element={<GestionOficios />} />
                     <Route path="ubicaciones" element={<GestionUbicaciones />} />
-                    <Route path="tickets" element={<ResolucionTickets />} /> {/* <-- NUEVA */}
+                    <Route path="tickets" element={<ResolucionTickets />} />
                 </Route>
 
                 {/* ==========================================
