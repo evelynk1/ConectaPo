@@ -1,47 +1,54 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// 1. Layouts
+// Layouts
 import PublicLayout from '../layouts/PublicLayout';
 import PrivateLayout from '../layouts/PrivateLayout';
 import AdminLayout from '../layouts/AdminLayout';
 
-// 2. Pages - Públicas
+// Páginas Públicas
 import Home from '../pages/public/Home';
 import Buscar from '../pages/public/Buscar';
 import Login from '../pages/public/Login';
 import Registro from '../pages/public/Registro';
 
-// 3. Pages - Privadas
+// Páginas Privadas (Usuarios)
 import MiPerfil from '../pages/private/MiPerfil';
 import GestionCalendario from '../pages/private/GestionCalendario';
+import CrearTicket from '../pages/private/CrearTicket'; // <-- NUEVA
 
-// 4. Pages - Admin
+// Páginas de Administración
 import DashboardAdmin from '../pages/admin/DashboardAdmin';
 import GestionOficios from '../pages/admin/GestionOficios';
 import GestionUbicaciones from '../pages/admin/GestionUbicaciones';
+import ResolucionTickets from '../pages/admin/ResolucionTickets'; // <-- NUEVA
 
-// 5. Pages - Error
+// Errores
 import NotFound404 from '../pages/error/NotFound404';
 
-const ProtectedRoute = ({ isAllowed, redirectTo = "/login", children }) => {
-    if (!isAllowed) {
-        return <Navigate to={redirectTo} replace />;
-    }
-    return children ? children : <Outlet />;
+// Simulación de Autenticación (Temporal)
+const mockUser = {
+    isAuthenticated: true,
+    rol: 'ADMIN', // Cambia a 'USUARIO' para probar las rutas del panel privado
 };
 
-export const AppRouter = () => {
-    // Estado simulado. Cambia el rol a 'USUARIO', 'ADMIN' o isLogged a false para probar.
-    const mockUser = {
-        isLogged: true,
-        rol: 'ADMIN'
-    };
+// Componente para proteger rutas según el rol
+const ProtectedRoute = ({ children, allowedRole }) => {
+    if (!mockUser.isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+    if (allowedRole && mockUser.rol !== allowedRole) {
+        return <Navigate to="/" replace />;
+    }
+    return children;
+};
 
+export default function AppRouter() {
     return (
         <BrowserRouter>
             <Routes>
-
-                {/* RUTAS PÚBLICAS */}
+                {/* ==========================================
+            RUTAS PÚBLICAS
+        ========================================== */}
                 <Route element={<PublicLayout />}>
                     <Route path="/" element={<Home />} />
                     <Route path="/buscar" element={<Buscar />} />
@@ -49,33 +56,44 @@ export const AppRouter = () => {
                     <Route path="/registro" element={<Registro />} />
                 </Route>
 
-                {/* RUTAS PRIVADAS (Panel de Usuario) */}
-                <Route element={
-                    <ProtectedRoute isAllowed={mockUser.isLogged && (mockUser.rol === 'USUARIO' || mockUser.rol === 'ADMIN')} />
-                }>
-                    <Route element={<PrivateLayout />}>
-                        <Route path="/panel/perfil" element={<MiPerfil />} />
-                        <Route path="/panel/calendario" element={<GestionCalendario />} />
-                    </Route>
+                {/* ==========================================
+            RUTAS PRIVADAS (USUARIOS)
+        ========================================== */}
+                <Route
+                    path="/panel"
+                    element={
+                        <ProtectedRoute allowedRole="USUARIO">
+                            <PrivateLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route path="perfil" element={<MiPerfil />} />
+                    <Route path="calendario" element={<GestionCalendario />} />
+                    <Route path="tickets" element={<CrearTicket />} /> {/* <-- NUEVA */}
                 </Route>
 
-                {/* RUTAS ADMIN */}
-                <Route element={
-                    <ProtectedRoute isAllowed={mockUser.isLogged && mockUser.rol === 'ADMIN'} redirectTo="/" />
-                }>
-                    <Route element={<AdminLayout />}>
-                        <Route path="/admin" element={<DashboardAdmin />} />
-                        <Route path="/admin/oficios" element={<GestionOficios />} />
-                        <Route path="/admin/ubicaciones" element={<GestionUbicaciones />} />
-                    </Route>
+                {/* ==========================================
+            RUTAS DE ADMINISTRACIÓN
+        ========================================== */}
+                <Route
+                    path="/admin"
+                    element={
+                        <ProtectedRoute allowedRole="ADMIN">
+                            <AdminLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route index element={<DashboardAdmin />} />
+                    <Route path="oficios" element={<GestionOficios />} />
+                    <Route path="ubicaciones" element={<GestionUbicaciones />} />
+                    <Route path="tickets" element={<ResolucionTickets />} /> {/* <-- NUEVA */}
                 </Route>
 
-                {/* 404 */}
+                {/* ==========================================
+            RUTA NOT FOUND (404)
+        ========================================== */}
                 <Route path="*" element={<NotFound404 />} />
-
             </Routes>
         </BrowserRouter>
     );
-};
-
-export default AppRouter;
+}
