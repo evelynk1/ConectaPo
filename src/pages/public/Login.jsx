@@ -7,7 +7,8 @@ const Login = () => {
         login(
             {
                 name: 'Usuario Prueba',
-                email: 'usuario@conectapo.cl'
+                email: 'usuario@conectapo.cl',
+                rol: 'USUARIO'
             },
             'token-prueba-123'
         )

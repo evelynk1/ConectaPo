@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+import { useUser } from '../context/useUser';
+
 // Layouts
 import PublicLayout from '../layouts/PublicLayout';
 import PrivateLayout from '../layouts/PrivateLayout';
@@ -26,19 +28,25 @@ import ResolucionTickets from '../pages/admin/ResolucionTickets';
 import NotFound404 from '../pages/error/NotFound404';
 
 // Simulación de Autenticación (Temporal)
-const mockUser = {
-    isAuthenticated: true,
-    rol: 'ADMIN',
-};
+//const mockUser = {
+    // isAuthenticated: true,
+    //rol: 'ADMIN',
+//};
 
 // Componente para proteger rutas según el rol
 const ProtectedRoute = ({ children, allowedRole }) => {
-    if (!mockUser.isAuthenticated) {
+    const { user, token } = useUser();
+
+    // Si no hay usuario o token, no está autenticado
+    if (!user || !token) {
         return <Navigate to="/login" replace />;
     }
-    if (allowedRole && mockUser.rol !== allowedRole) {
+
+    // Si la ruta requiere un rol y el usuario no lo tiene
+    if (allowedRole && user.rol !== allowedRole) {
         return <Navigate to="/" replace />;
     }
+
     return children;
 };
 
