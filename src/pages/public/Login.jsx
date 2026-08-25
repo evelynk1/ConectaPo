@@ -1,45 +1,77 @@
+import { useState } from 'react'
 import { useUser } from '../../context/useUser'
 
 const Login = () => {
-    const { user, login, logout } = useUser()
+    const { login } = useUser()
 
-    const iniciarSesion = () => {
-        login(
-            {
-                name: 'Usuario Prueba',
-                email: 'usuario@conectapo.cl',
-                rol: 'USUARIO'
-            },
-            'token-prueba-123'
-        )
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+
+    const handleSubmit = (e) => {
+        e.preventDefault()
+
+        /*
+          Aquí se conectará más adelante el backend real.
+
+          Ejemplo futuro:
+
+          const response = await fetch(...)
+          const data = await response.json()
+
+          login(data.user, data.token)
+        */
+
+        console.log('Email:', email)
+        console.log('Password:', password)
     }
 
     return (
-        <div className="p-4 text-2xl font-bold text-gray-700">
+        <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow">
 
-            <h1>Vista login</h1>
+            <h1 className="text-2xl font-bold text-gray-700 mb-6">
+                Iniciar sesión
+            </h1>
 
-            {user ? (
-                <>
-                    <p className="mt-4">
-                        Usuario conectado: {user.name}
-                    </p>
+            <form onSubmit={handleSubmit}>
 
-                    <button
-                        onClick={logout}
-                        className="mt-4 px-4 py-2 bg-red-500 text-white rounded"
-                    >
-                        Cerrar sesión
-                    </button>
-                </>
-            ) : (
+                <div className="mb-4">
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                        Correo electrónico
+                    </label>
+
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        placeholder="correo@ejemplo.cl"
+                        required
+                    />
+                </div>
+
+                <div className="mb-6">
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                        Contraseña
+                    </label>
+
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        placeholder="Contraseña"
+                        required
+                    />
+                </div>
+
                 <button
-                    onClick={iniciarSesion}
-                    className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+                    type="submit"
+                    className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
                 >
-                    Iniciar sesión de prueba
+                    Iniciar sesión
                 </button>
-            )}
+
+            </form>
 
         </div>
     )

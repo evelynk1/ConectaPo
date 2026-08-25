@@ -1,12 +1,23 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import ConectaPoLogo from './Logo'
+import { useUser } from '../context/useUser'
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const { user, logout } = useUser()
+
+  const navigate = useNavigate()
+
   const closeMenu = () => {
     setMenuOpen(false)
+  }
+
+  const handleLogout = () => {
+    logout()
+    closeMenu()
+    navigate('/')
   }
 
   return (
@@ -32,20 +43,59 @@ export default function Navbar() {
             Servicios
           </Link>
 
-          <Link
-            to="/login"
-            className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
-          >
-            Iniciar sesión
-          </Link>
+          {/* Si NO hay usuario conectado */}
+          {!user && (
+            <>
+              <Link
+                to="/login"
+                className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
+              >
+                Iniciar sesión
+              </Link>
 
-          <Link
-            to="/registro"
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-md"
-            style={{ background: '#F97316' }}
-          >
-            Registrarse
-          </Link>
+              <Link
+                to="/registro"
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-md"
+                style={{ background: '#F97316' }}
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
+
+          {/* Si HAY usuario conectado */}
+          {user && (
+            <>
+              {user.rol === 'USUARIO' && (
+                <Link
+                  to="/panel/perfil"
+                  className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
+                >
+                  Mi perfil
+                </Link>
+              )}
+
+              {user.rol === 'ADMIN' && (
+                <Link
+                  to="/admin"
+                  className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
+                >
+                  Administración
+                </Link>
+              )}
+
+              <span className="text-sm font-semibold text-slate-700">
+                {user.name}
+              </span>
+
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                Cerrar sesión
+              </button>
+            </>
+          )}
 
         </div>
 
@@ -92,22 +142,57 @@ export default function Navbar() {
             Servicios
           </Link>
 
-          <Link
-            to="/login"
-            onClick={closeMenu}
-            className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Iniciar sesión
-          </Link>
+          {!user && (
+            <>
+              <Link
+                to="/login"
+                onClick={closeMenu}
+                className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Iniciar sesión
+              </Link>
 
-          <Link
-            to="/registro"
-            onClick={closeMenu}
-            className="text-left px-3 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ background: '#F97316' }}
-          >
-            Registrarse
-          </Link>
+              <Link
+                to="/registro"
+                onClick={closeMenu}
+                className="text-left px-3 py-2 rounded-lg text-sm font-semibold text-white"
+                style={{ background: '#F97316' }}
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
+
+          {user && (
+            <>
+              {user.rol === 'USUARIO' && (
+                <Link
+                  to="/panel/perfil"
+                  onClick={closeMenu}
+                  className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Mi perfil
+                </Link>
+              )}
+
+              {user.rol === 'ADMIN' && (
+                <Link
+                  to="/admin"
+                  onClick={closeMenu}
+                  className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Administración
+                </Link>
+              )}
+
+              <button
+                onClick={handleLogout}
+                className="text-left px-3 py-2 rounded-lg text-sm font-semibold text-white bg-red-500"
+              >
+                Cerrar sesión
+              </button>
+            </>
+          )}
 
         </div>
       )}
