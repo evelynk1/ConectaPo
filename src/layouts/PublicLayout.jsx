@@ -1,19 +1,21 @@
 import { Outlet } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const PublicLayout = () => {
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
-            <header className="bg-white shadow-sm p-4">
-                <h1 className="text-xl font-bold text-blue-600">Conectapo (Público)</h1>
+            {/* Header fijo */}
+            <header className="sticky top-0 z-50 bg-white shadow-sm">
+                <Navbar />
             </header>
 
             <main className="flex-grow p-4">
-                {/* Aquí React Router inyectará Home, Buscar o Login */}
                 <Outlet />
             </main>
 
             <footer className="bg-gray-800 text-white p-4 text-center">
-                <p>Footer Público</p>
+                <Footer />
             </footer>
         </div>
     );
