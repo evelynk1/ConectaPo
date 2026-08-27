@@ -18,7 +18,7 @@ const PublicLayout = () => {
                 <Footer />
             </footer>
         </div>
-    );
-};
+    )
+}
 
-export default PublicLayout;
+export default PublicLayout

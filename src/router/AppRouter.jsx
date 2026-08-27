@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+import { useUser } from '../context/useUser';
+
 // Layouts
 import PublicLayout from '../layouts/PublicLayout';
 import PrivateLayout from '../layouts/PrivateLayout';
@@ -40,20 +42,18 @@ const BYPASS_AUTH = true;
 
 // Componente para proteger rutas según el rol
 const ProtectedRoute = ({ children, allowedRole }) => {
-    // --- LÓGICA NUEVA AGREGADA AQUÍ ---
-    if (BYPASS_AUTH) {
-        return children; // Si está activo, deja pasar sin revisar roles ni login
-    }
-    // ----------------------------------
+    const { user, token } = useUser();
 
-    // --- CÓDIGO ORIGINAL (Queda inactivo mientras BYPASS_AUTH sea true) ---
-    /*
-    if (!mockUser.isAuthenticated) {
+    // Si no hay usuario o token, no está autenticado
+    if (!user || !token) {
         return <Navigate to="/login" replace />;
     }
-    if (allowedRole && mockUser.rol !== allowedRole) {
+
+    // Si la ruta requiere un rol y el usuario no lo tiene
+    if (allowedRole && user.rol !== allowedRole) {
         return <Navigate to="/" replace />;
     }
+
     return children;
     */
 };
