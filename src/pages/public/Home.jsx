@@ -1,11 +1,18 @@
 import { useState } from 'react'
-import { CATEGORIES, SERVICES } from '../../data/services' // O ajusta tus rutas relativas si no usas alias '@'
+import { useNavigate } from 'react-router-dom' // 1. Importamos el hook de navegación
+import { CATEGORIES, SERVICES } from '../../data/services' 
 import ServiceCard from '../../components/ServiceCard'
-import Footer from '../../components/Footer'
 
-export default function Home({ setScreen }) {
+export default function Home() {
   const [search, setSearch] = useState('')
   const [comuna, setComuna] = useState('')
+  const navigate = useNavigate() // 2. Inicializamos el hook
+
+  // Función al enviar el formulario de búsqueda del Hero
+  const handleSearch = (e) => {
+    e.preventDefault()
+    navigate('/buscar')
+  }
 
   return (
     <div>
@@ -29,7 +36,7 @@ export default function Home({ setScreen }) {
               Conecta con gasfiteros, electricistas, carpinteros y más oficios en tu comuna. Rápido, seguro y confiable.
             </p>
 
-            <div className="bg-white rounded-2xl p-2 shadow-2xl flex flex-col sm:flex-row gap-2">
+            <form onSubmit={handleSearch} className="bg-white rounded-2xl p-2 shadow-2xl flex flex-col sm:flex-row gap-2">
               <div className="flex items-center gap-3 flex-1 px-4 py-2 rounded-xl bg-slate-50">
                 <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -50,12 +57,14 @@ export default function Home({ setScreen }) {
                   ))}
                 </select>
               </div>
-              <button onClick={() => setScreen('gallery')}
+
+              {/* CORREGIDO: Usamos type="submit" para que active handleSearch y nos lleve a /buscar */}
+              <button type="submit"
                 className="px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg shrink-0"
                 style={{ background: '#F97316' }}>
                 Buscar
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </section>
@@ -79,13 +88,13 @@ export default function Home({ setScreen }) {
             <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1">Categorías</p>
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>¿Qué necesitas hoy?</h2>
           </div>
-          <button onClick={() => setScreen('gallery')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block">
+          <button onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block">
             Ver todo →
           </button>
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
           {CATEGORIES.map(({ icon, label }) => (
-            <button key={label} onClick={() => setScreen('gallery')}
+            <button key={label} onClick={() => navigate('/buscar')}
               className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group">
               <span className="text-2xl group-hover:scale-110 transition-transform">{icon}</span>
               <span className="text-xs font-medium text-slate-600 text-center leading-tight">{label}</span>
@@ -102,13 +111,13 @@ export default function Home({ setScreen }) {
               <p className="text-xs font-semibold text-orange-500 uppercase tracking-widest mb-1">Destacados</p>
               <h2 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>Servicios recomendados</h2>
             </div>
-            <button onClick={() => setScreen('gallery')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block">
+            <button onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block">
               Ver galería →
             </button>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {SERVICES.slice(0, 3).map(s => (
-              <ServiceCard key={s.id} service={s} setScreen={setScreen} />
+              <ServiceCard key={s.id} service={s} />
             ))}
           </div>
         </div>
@@ -124,15 +133,13 @@ export default function Home({ setScreen }) {
               <h2 className="text-2xl md:text-3xl font-extrabold mb-2" style={{ fontFamily: 'Plus Jakarta Sans' }}>¿Eres un profesional?</h2>
               <p className="text-orange-100 text-sm md:text-base">Publica tus servicios y conecta con miles de clientes en Chile.</p>
             </div>
-            <button onClick={() => setScreen('register')}
+            <button onClick={() => navigate('/registro')}
               className="px-8 py-3.5 bg-white rounded-xl font-bold text-orange-500 hover:shadow-xl transition-all hover:scale-105 shrink-0 text-sm">
-              Comenzar gratis
+              Comenzar ahora
             </button>
           </div>
         </div>
       </section>
-
-      <Footer setScreen={setScreen} />
     </div>
   )
 }

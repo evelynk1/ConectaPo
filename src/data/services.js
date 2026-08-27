@@ -20,7 +20,6 @@ export const SERVICES = [
     price: '$25.000/hr',
     image: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&h=300&fit=crop&auto=format',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format',
-    badge: 'Pro',
   },
   {
     id: 2,
@@ -32,7 +31,6 @@ export const SERVICES = [
     price: '$30.000/hr',
     image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&auto=format',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&auto=format',
-    badge: 'Pro',
   },
   {
     id: 3,
@@ -44,7 +42,6 @@ export const SERVICES = [
     price: '$28.000/hr',
     image: 'https://images.unsplash.com/photo-1588854337115-1c67d9247e4d?w=400&h=300&fit=crop&auto=format',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&auto=format',
-    badge: null,
   },
   {
     id: 4,
@@ -56,7 +53,6 @@ export const SERVICES = [
     price: '$22.000/hr',
     image: 'https://images.unsplash.com/photo-1562259929-b4e1fd3aef09?w=400&h=300&fit=crop&auto=format',
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&auto=format',
-    badge: 'Top',
   },
   {
     id: 5,
@@ -68,7 +64,6 @@ export const SERVICES = [
     price: '$18.000/hr',
     image: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=300&fit=crop&auto=format',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&auto=format',
-    badge: null,
   },
   {
     id: 6,
@@ -80,6 +75,5 @@ export const SERVICES = [
     price: '$20.000/hr',
     image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&auto=format',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&auto=format',
-    badge: 'Top',
   },
 ]

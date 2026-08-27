@@ -15,20 +15,6 @@ export default function ServiceCard({ service: s }: { service: any }) {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
-        {/* Badge */}
-        {s.badge && (
-          <span
-            className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold text-white"
-            style={{
-              background: s.badge === 'Top'
-                ? '#F97316'
-                : '#2563EB'
-            }}
-          >
-            {s.badge === 'Top' ? '⭐ Top' : '✓ Pro'}
-          </span>
-        )}
-
         {/* Precio */}
         <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold bg-white/90 backdrop-blur-sm text-slate-800">
           {s.price}
@@ -78,10 +64,10 @@ export default function ServiceCard({ service: s }: { service: any }) {
 
         </div>
 
-        {/* Botón */}
+        {/* Botón dirigido a la página de detalle */}
         <button
-          onClick={() => navigate(`/servicio/${s.id}`)}
-          className="w-full py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md"
+          onClick={() => navigate(`/detalle/${s.id}`)}
+          className="w-full py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md cursor-pointer"
           style={{ background: '#2563EB' }}
         >
           Ver detalle

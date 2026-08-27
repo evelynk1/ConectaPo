@@ -7,7 +7,8 @@ import AdminLayout from '../layouts/AdminLayout';
 
 // Páginas Públicas
 import Home from '../pages/public/Home';
-import Buscar from '../pages/public/Buscar';
+import Galeria from '../pages/public/Galeria';
+import Detalle from '../pages/public/Detalle';
 import Login from '../pages/public/Login';
 import Registro from '../pages/public/Registro';
 
@@ -28,11 +29,25 @@ import NotFound404 from '../pages/error/NotFound404';
 // Simulación de Autenticación (Temporal)
 const mockUser = {
     isAuthenticated: true,
-    rol: 'ADMIN',
+    rol: 'USUARIO', 
 };
+
+// =========================================================================
+// saltar la restricción de roles temporalmente.
+// se pone en 'false' cuando quieras volver a activar la seguridad de roles.
+// =========================================================================
+const BYPASS_AUTH = true; 
 
 // Componente para proteger rutas según el rol
 const ProtectedRoute = ({ children, allowedRole }) => {
+    // --- LÓGICA NUEVA AGREGADA AQUÍ ---
+    if (BYPASS_AUTH) {
+        return children; // Si está activo, deja pasar sin revisar roles ni login
+    }
+    // ----------------------------------
+
+    // --- CÓDIGO ORIGINAL (Queda inactivo mientras BYPASS_AUTH sea true) ---
+    /*
     if (!mockUser.isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
@@ -40,6 +55,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
         return <Navigate to="/" replace />;
     }
     return children;
+    */
 };
 
 export default function AppRouter() {
@@ -47,18 +63,19 @@ export default function AppRouter() {
         <BrowserRouter>
             <Routes>
                 {/* ==========================================
-            RUTAS PÚBLICAS
-        ========================================== */}
+                    RUTAS PÚBLICAS
+                ========================================== */}
                 <Route element={<PublicLayout />}>
                     <Route path="/" element={<Home />} />
-                    <Route path="/buscar" element={<Buscar />} />
+                    <Route path="/galeria" element={<Galeria/>} />
+                    <Route path="/detalle/:id" element={<Detalle />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/registro" element={<Registro />} />
                 </Route>
 
                 {/* ==========================================
-            RUTAS PRIVADAS (USUARIOS)
-        ========================================== */}
+                    RUTAS PRIVADAS (USUARIOS)
+                ========================================== */}
                 <Route
                     path="/panel"
                     element={
@@ -73,8 +90,8 @@ export default function AppRouter() {
                 </Route>
 
                 {/* ==========================================
-            RUTAS DE ADMINISTRACIÓN
-        ========================================== */}
+                    RUTAS DE ADMINISTRACIÓN
+                ========================================== */}
                 <Route
                     path="/admin"
                     element={
@@ -90,8 +107,8 @@ export default function AppRouter() {
                 </Route>
 
                 {/* ==========================================
-            RUTA NOT FOUND (404)
-        ========================================== */}
+                    RUTA NOT FOUND (404)
+                ========================================== */}
                 <Route path="*" element={<NotFound404 />} />
             </Routes>
         </BrowserRouter>

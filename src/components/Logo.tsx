@@ -2,9 +2,6 @@
 export default function ConectaPoLogo({
   height = 40,
   inverted = false
-}: {
-  height?: number
-  inverted?: boolean
 }) {
 
   // Define el color azul/teal del logo.

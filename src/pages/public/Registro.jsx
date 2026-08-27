@@ -1,11 +1,7 @@
-
 import { useState } from 'react'
 import ConectaPoLogo from '../../components/Logo'
 
 export default function Registro({ setScreen }) {
-  // Estado para alternar entre el rol de 'cliente' o 'profesional'
-  const [role, setRole] = useState('cliente')
-  
   // Estado para controlar si el usuario aceptó los términos y condiciones
   const [terms, setTerms] = useState(false)
   
@@ -61,16 +57,6 @@ export default function Registro({ setScreen }) {
             </p>
           </div>
 
-          {/* Selector de tipo de usuario (Cliente / Profesional) */}
-          <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
-            {['cliente', 'profesional'].map(r => (
-              <button key={r} onClick={() => setRole(r)}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${role === r ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
-                {r === 'cliente' ? '👤 Cliente' : '🔧 Profesional'}
-              </button>
-            ))}
-          </div>
-
           {/* Campos del formulario */}
           <div className="space-y-4">
             {/* Input de Nombre Completo */}
@@ -123,7 +109,7 @@ export default function Registro({ setScreen }) {
 
             {/* Botón principal de envío */}
             <button onClick={() => setScreen('profile')}
-              className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 hover:shadow-lg mt-2"
+              className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 hover:shadow-lg mt-2 cursor-pointer"
               style={{ background: '#F97316' }}>
               Registrarse gratis
             </button>
