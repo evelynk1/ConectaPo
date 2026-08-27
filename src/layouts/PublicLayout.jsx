@@ -1,22 +1,22 @@
-import { Outlet } from 'react-router-dom'
-import Navbar from '../components/Navbar'
-import Footer from '../components/Footer'
+import { Outlet } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const PublicLayout = () => {
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
+            {/* Header fijo */}
+            <header className="sticky top-0 z-50 bg-white shadow-sm">
+                <Navbar />
+            </header>
 
-            {/* Barra de navegación */}
-            <Navbar />
-
-            {/* Contenido de la página */}
-            <main className="flex-grow">
+            <main className="flex-grow p-4">
                 <Outlet />
             </main>
 
-            {/* Pie de página */}
-            <Footer />
-
+            <footer className="bg-gray-800 text-white p-4 text-center">
+                <Footer />
+            </footer>
         </div>
     )
 }
