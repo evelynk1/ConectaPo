@@ -55,8 +55,7 @@ export default function Navbar() {
 
               <Link
                 to="/registro"
-                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-md"
-                style={{ background: '#F97316' }}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all bg-orange-500 hover:bg-orange-600 hover:shadow-md"
               >
                 Registrarse
               </Link>

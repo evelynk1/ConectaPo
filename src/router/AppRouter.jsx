@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-
 import { useUser } from '../context/useUser';
 
 // Layouts
@@ -28,18 +27,6 @@ import ResolucionTickets from '../pages/admin/ResolucionTickets';
 // Errores
 import NotFound404 from '../pages/error/NotFound404';
 
-// Simulación de Autenticación (Temporal)
-const mockUser = {
-    isAuthenticated: true,
-    rol: 'USUARIO', 
-};
-
-// =========================================================================
-// saltar la restricción de roles temporalmente.
-// se pone en 'false' cuando quieras volver a activar la seguridad de roles.
-// =========================================================================
-const BYPASS_AUTH = true; 
-
 // Componente para proteger rutas según el rol
 const ProtectedRoute = ({ children, allowedRole }) => {
     const { user, token } = useUser();
@@ -55,7 +42,6 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     }
 
     return children;
-    */
 };
 
 export default function AppRouter() {
@@ -67,7 +53,7 @@ export default function AppRouter() {
                 ========================================== */}
                 <Route element={<PublicLayout />}>
                     <Route path="/" element={<Home />} />
-                    <Route path="/galeria" element={<Galeria/>} />
+                    <Route path="/galeria" element={<Galeria />} />
                     <Route path="/detalle/:id" element={<Detalle />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/registro" element={<Registro />} />
