@@ -69,7 +69,7 @@ export const loginUsuario = async (req, res) => {
       return res.status(400).json({ error: 'Faltan credenciales' });
     }
 
-    // 2. Buscamos al usuario en la base de datos (¡Solo si está activo!)
+    // 2. Buscamos al usuario en la base de datos
     const resultado = await pool.query(
       'SELECT * FROM auth.usuarios WHERE email = $1 AND is_active = true',
       [email]
@@ -88,8 +88,7 @@ export const loginUsuario = async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // 4. Generamos el pase VIP (Token JWT)
-    // Guardamos el ID y el ROL adentro del token para saber qué puede hacer
+    // 4. Generamos Token JWT
     const token = jwt.sign(
       { id: usuario.id, rol: usuario.rol }, 
       process.env.JWT_SECRET,
@@ -110,6 +109,20 @@ export const loginUsuario = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error en el login:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// ... código anterior (loginUsuario)
+
+export const obtenerPerfil = async (req, res) => {
+  try {
+    res.json({
+      mensaje: '¡Bienvenido a ConectaPo!',
+      usuario_conectado: req.usuario 
+    });
+  } catch (error) {
+    console.error('❌ Error al obtener perfil:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
