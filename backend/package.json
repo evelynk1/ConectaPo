@@ -4,7 +4,7 @@
   "description": "API y Backend para el marketplace ConectaPo",
   "main": "src/index.js",
   "type": "module",
-"scripts": {
+  "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "db:setup": "node src/database/setup.js"
@@ -17,6 +17,7 @@
   "author": "EquiPo ConectaPo",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
