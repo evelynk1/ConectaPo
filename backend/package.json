@@ -4,9 +4,10 @@
   "description": "API y Backend para el marketplace ConectaPo",
   "main": "src/index.js",
   "type": "module",
-  "scripts": {
+"scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "db:setup": "node src/database/setup.js"
   },
   "keywords": [
     "api",
