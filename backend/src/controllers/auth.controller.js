@@ -113,3 +113,18 @@ export const loginUsuario = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+// ... código anterior (loginUsuario)
+
+export const obtenerPerfil = async (req, res) => {
+  try {
+    // Si llegamos a este punto, significa que el middleware nos dejó pasar
+    res.json({
+      mensaje: '¡Bienvenido a la zona VIP de ConectaPo!',
+      usuario_conectado: req.usuario // Aquí vienen los datos que sacamos del token
+    });
+  } catch (error) {
+    console.error('❌ Error al obtener perfil:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
