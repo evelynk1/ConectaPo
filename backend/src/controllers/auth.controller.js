@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { pool } from '../config/db.js';
+import jwt from 'jsonwebtoken';
 
 export const registrarUsuario = async (req, res) => {
   try {
@@ -55,6 +56,60 @@ export const registrarUsuario = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error en el registro:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+export const loginUsuario = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Validamos que vengan los datos
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Faltan credenciales' });
+    }
+
+    // 2. Buscamos al usuario en la base de datos (¡Solo si está activo!)
+    const resultado = await pool.query(
+      'SELECT * FROM auth.usuarios WHERE email = $1 AND is_active = true',
+      [email]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(401).json({ error: 'Credenciales inválidas o cuenta bloqueada' });
+    }
+
+    const usuario = resultado.rows[0];
+
+    // 3. Comparamos la contraseña encriptada
+    const claveValida = await bcrypt.compare(password, usuario.password_hash);
+
+    if (!claveValida) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // 4. Generamos el pase VIP (Token JWT)
+    // Guardamos el ID y el ROL adentro del token para saber qué puede hacer
+    const token = jwt.sign(
+      { id: usuario.id, rol: usuario.rol }, 
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' } // El token durará 1 día
+    );
+
+    // 5. Respondemos con éxito
+    res.json({
+      mensaje: 'Login exitoso',
+      token: token,
+      usuario: {
+        id: usuario.id,
+        nombres: usuario.nombres,
+        email: usuario.email,
+        rol: usuario.rol
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en el login:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
