@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config'; // Carga las variables del archivo .env automáticamente
+import { pool } from './config/db.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
