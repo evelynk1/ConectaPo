@@ -14,23 +14,23 @@ export const verificarToken = (req, res, next) => {
     console.error('❌ Error al verificar token:', error.message);
     return res.status(403).json({ error: 'Token inválido o expirado.' });
   }
-
 };
-// Middleware para verificar los roles permitidos (CON-85)
-export const verificarRol = (...rolesPermitidos) => {
+
+export const autorizarRoles = (...rolesPermitidos) => {
   return (req, res, next) => {
-    // req.usuario viene del middleware verificarToken de arriba
+    // Verificamos que el usuario exista
     if (!req.usuario || !req.usuario.rol) {
-      return res.status(403).json({ error: 'Acceso denegado. No se encontró el rol del usuario.' });
+      return res.status(401).json({ error: 'Acceso denegado. No se encontró el rol del usuario.' });
     }
 
-    // Comprobamos si el rol del usuario está incluido en los permitidos
+    // Comprobamos si el rol del usuario está en la lista de permitidos
     if (!rolesPermitidos.includes(req.usuario.rol)) {
-      return res.status(403).json({ 
-        error: `Acceso no autorizado. Se requiere uno de los siguientes roles: ${rolesPermitidos.join(', ')}` 
+      return res.status(403).json({
+        error: `Acceso no autorizado. Se requiere uno de los siguientes roles: ${rolesPermitidos.join(', ')}`
       });
     }
 
+    // Si el rol es correcto, lo dejamos
     next();
   };
 };

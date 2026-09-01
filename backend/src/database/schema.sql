@@ -109,7 +109,7 @@ CREATE TABLE negocio.publicaciones (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Nueva tabla intermedia: Habilidades específicas por publicación
+
 CREATE TABLE negocio.publicaciones_habilidades (
     publicacion_id UUID REFERENCES negocio.publicaciones(id) ON DELETE CASCADE,
     habilidad_id INT REFERENCES auth.habilidades(id) ON DELETE CASCADE,
@@ -117,7 +117,7 @@ CREATE TABLE negocio.publicaciones_habilidades (
     PRIMARY KEY (publicacion_id, habilidad_id)
 );
 
--- La tabla de bloques horarios que me habías cobrado
+
 CREATE TABLE negocio.bloques_horarios (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     publicacion_id UUID REFERENCES negocio.publicaciones(id) ON DELETE CASCADE,
