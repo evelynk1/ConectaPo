@@ -30,7 +30,7 @@ export const autorizarRoles = (...rolesPermitidos) => {
       });
     }
 
-    // Si el rol es correcto, lo dejamos pasar
+    // Si el rol es correcto, lo dejamos
     next();
   };
 };
