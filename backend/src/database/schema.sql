@@ -117,7 +117,7 @@ CREATE TABLE negocio.publicaciones_habilidades (
     PRIMARY KEY (publicacion_id, habilidad_id)
 );
 
--- La tabla de bloques horarios que me habías cobrado
+-- La tabla de bloques horarios 
 CREATE TABLE negocio.bloques_horarios (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     publicacion_id UUID REFERENCES negocio.publicaciones(id) ON DELETE CASCADE,
