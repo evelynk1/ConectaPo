@@ -2,18 +2,23 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { pool } from './config/db.js';
-import authRoutes from './routes/auth.routes.js'; 
+
+import authRoutes from './routes/auth.routes.js';
+import publicacionesRoutes from './routes/publicaciones.routes.js';
+import oficiosRoutes from './routes/oficios.routes.js'; // <-- Agregamos esta línea
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors()); 
-app.use(express.json()); // Permite recibir datos en formato JSON desde el frontend
+app.use(cors());
+app.use(express.json());
 
 // ==========================================
 // RUTAS DE LA API
 // ==========================================
 app.use('/api/auth', authRoutes);
+app.use('/api/publicaciones', publicacionesRoutes);
+app.use('/api/oficios', oficiosRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: '¡Servidor de ConectaPo funcionando al 100%!' });
