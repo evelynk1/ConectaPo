@@ -31,3 +31,27 @@ export const crearOficio = async (req, res) => {
         res.status(500).json({ error: 'Error interno al crear el oficio.' });
     }
 };
+
+export const obtenerOficios = async (req, res) => {
+    try {
+        // ==========================================
+        // CONSULTA DE OFICIOS (SELECT)
+        // ==========================================
+        const query = `
+            SELECT id, nombre, icono_url 
+            FROM negocio.oficios 
+            ORDER BY nombre ASC;
+        `;
+
+        const { rows } = await pool.query(query);
+
+        res.json({
+            total: rows.length,
+            oficios: rows
+        });
+
+    } catch (error) {
+        console.error('❌ Error al obtener los oficios:', error);
+        res.status(500).json({ error: 'Error interno al obtener los oficios.' });
+    }
+};

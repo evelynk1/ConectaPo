@@ -113,14 +113,34 @@ export const loginUsuario = async (req, res) => {
   }
 };
 
-// ... código anterior (loginUsuario)
-
 export const obtenerPerfil = async (req, res) => {
   try {
+    // 1. Obtenemos el ID del usuario decodificado desde el token (inyectado por el middleware)
+    const usuarioId = req.usuario.id;
+
+    // ==========================================
+    // CONSULTA DE PERFIL (SELECT)
+    // ==========================================
+    // Seleccionamos todos los campos públicos del usuario usando su ID, omitiendo el password por seguridad.
+    const resultado = await pool.query(
+      `SELECT id, rut, nombres, primer_apellido, segundo_apellido, genero, email, telefono, rol, avatar_url, comuna_id, villa_poblacion_id, ultima_conexion, instagram_url, facebook_url, is_active, strikes, created_at 
+       FROM auth.usuarios 
+       WHERE id = $1`,
+      [usuarioId]
+    );
+    // ==========================================
+
+    // 3. Validamos si el usuario existe en la base de datos
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // 4. Respondemos al frontend con los datos obtenidos directamente de la BD
     res.json({
       mensaje: '¡Bienvenido a ConectaPo!',
-      usuario_conectado: req.usuario 
+      usuario_conectado: resultado.rows[0] 
     });
+
   } catch (error) {
     console.error('❌ Error al obtener perfil:', error);
     res.status(500).json({ error: 'Error interno del servidor' });

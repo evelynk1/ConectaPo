@@ -8,7 +8,10 @@ export const verificarToken = (req, res, next) => {
     }
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.usuario = decoded;
+    
+    // Cambiamos esto para que el rol y el id sigan sirviendo para autorizar Roles
+    req.usuario = decoded; 
+    
     next();
   } catch (error) {
     console.error('❌ Error al verificar token:', error.message);
@@ -18,19 +21,17 @@ export const verificarToken = (req, res, next) => {
 
 export const autorizarRoles = (...rolesPermitidos) => {
   return (req, res, next) => {
-    // Verificamos que el usuario exista
+    // Sigue validando perfectamente con req.usuario.rol
     if (!req.usuario || !req.usuario.rol) {
       return res.status(401).json({ error: 'Acceso denegado. No se encontró el rol del usuario.' });
     }
 
-    // Comprobamos si el rol del usuario está en la lista de permitidos
     if (!rolesPermitidos.includes(req.usuario.rol)) {
       return res.status(403).json({
         error: `Acceso no autorizado. Se requiere uno de los siguientes roles: ${rolesPermitidos.join(', ')}`
       });
     }
 
-    // Si el rol es correcto, lo dejamos
     next();
   };
 };
