@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { crearOficio, obtenerOficios } from '../controllers/oficios.controller.js';
+import { 
+    crearOficio, 
+    obtenerOficios, 
+    actualizarOficio 
+} from '../controllers/oficios.controller.js';
 import { verificarToken, autorizarRoles } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -9,5 +13,7 @@ router.get('/', obtenerOficios);
 
 // Ruta súper protegida: Solo el administrador puede crear oficios
 router.post('/', verificarToken, autorizarRoles('ADMIN'), crearOficio);
+
+router.put('/:id', verificarToken, autorizarRoles('ADMIN'), actualizarOficio);
 
 export default router;

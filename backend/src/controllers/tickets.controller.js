@@ -56,3 +56,40 @@ export const obtenerTickets = async (req, res) => {
         res.status(500).json({ error: 'Error interno al obtener los tickets.' });
     }
 };
+
+// ==========================================
+// ACTUALIZAR TICKET CON COALESCE (UPDATE)
+// Permite modificar de forma parcial el asunto,
+// la descripción o el estado de un ticket.
+// ==========================================
+export const actualizarTicket = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { asunto, descripcion, estado } = req.body;
+
+        const query = `
+            UPDATE soporte.tickets 
+            SET asunto = COALESCE($1, asunto),
+                descripcion = COALESCE($2, descripcion),
+                estado = COALESCE($3, estado)
+            WHERE id = $4
+            RETURNING *;
+        `;
+
+        const values = [asunto, descripcion, estado, id];
+        const { rows } = await pool.query(query, values);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Ticket de soporte no encontrado.' });
+        }
+
+        res.status(200).json({
+            mensaje: '¡Ticket actualizado exitosamente!',
+            ticket: rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error al actualizar el ticket:', error);
+        res.status(500).json({ error: 'Error interno del servidor al actualizar el ticket.' });
+    }
+};

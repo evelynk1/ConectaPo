@@ -1,4 +1,5 @@
 import { pool } from '../config/db.js';
+import { Router } from 'express';
 
 // ==========================================
 // OBTENER PERFIL DEL USUARIO LOGUEADO
@@ -72,3 +73,18 @@ export const actualizarPerfil = async (req, res) => {
         res.status(500).json({ error: 'Error interno al actualizar el perfil.' });
     }
 };
+
+// ==========================================
+// CONFIGURACIÓN DE RUTAS (PUT Y GET)
+// ==========================================
+
+const router = Router();
+
+// Ruta GET para obtener el perfil del usuario autenticado
+router.get('/perfil', verificarToken, obtenerPerfil);
+
+// RUTA PUT AÑADIDA:
+
+router.put('/perfil', verificarToken, actualizarPerfil);
+
+export default router;
