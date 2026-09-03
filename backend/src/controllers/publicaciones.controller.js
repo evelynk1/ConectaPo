@@ -1,12 +1,14 @@
 import { pool } from '../config/db.js';
 
+// ==========================================
+// CREAR PUBLICACIÓN CON HABILIDADES
+// ==========================================
 export const crearPublicacion = async (req, res) => {
     try {
-        // 1. Recibimos TODOS los campos posibles desde el body
         const {
             titulo,
             descripcion,
-            precio_base, // Siempre en peso chileno
+            precio_base,
             oficio_id,
             comuna_id,
             villa_poblacion_id,
@@ -14,58 +16,52 @@ export const crearPublicacion = async (req, res) => {
             es_horario_conversable,
             foto_url_1,
             foto_url_2,
-            foto_url_3
+            foto_url_3,
+            habilidades
         } = req.body;
 
-        // 2. ID del usuario desde el token 
         const usuario_id = req.usuario.id;
 
-        // 3. se validan los campos que son NOT NULL
         if (!titulo || !descripcion || !precio_base) {
             return res.status(400).json({ error: 'El título, descripción y precio_base son obligatorios.' });
         }
 
-        // 4. la consulta SQL 
+        // 1. Insertamos la publicación
         const query = `
-      INSERT INTO negocio.publicaciones (
-        usuario_id, 
-        titulo, 
-        descripcion, 
-        precio_base, 
-        oficio_id, 
-        comuna_id, 
-        villa_poblacion_id, 
-        anos_experiencia, 
-        es_horario_conversable, 
-        foto_url_1, 
-        foto_url_2, 
-        foto_url_3
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *; 
-    `;
+          INSERT INTO negocio.publicaciones (
+            usuario_id, titulo, descripcion, precio_base, oficio_id, comuna_id, 
+            villa_poblacion_id, anos_experiencia, es_horario_conversable, 
+            foto_url_1, foto_url_2, foto_url_3
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          RETURNING *; 
+        `;
 
-        // 5. Inyectamos los valores 
         const values = [
-            usuario_id,
-            titulo,
-            descripcion,
-            precio_base,
-            oficio_id || null,
-            comuna_id || null,
-            villa_poblacion_id || null,
+            usuario_id, titulo, descripcion, precio_base,
+            oficio_id || null, comuna_id || null, villa_poblacion_id || null,
             anos_experiencia || 0,
             es_horario_conversable !== undefined ? es_horario_conversable : true,
-            foto_url_1 || null,
-            foto_url_2 || null,
-            foto_url_3 || null
+            foto_url_1 || null, foto_url_2 || null, foto_url_3 || null
         ];
 
         const { rows } = await pool.query(query, values);
+        const nuevaPublicacion = rows[0];
+
+        // 2. Si vienen habilidades, en la tabla intermedia
+        if (habilidades && Array.isArray(habilidades) && habilidades.length > 0) {
+            for (const habilidad_id of habilidades) {
+                await pool.query(
+                    `INSERT INTO negocio.publicaciones_habilidades (publicacion_id, habilidad_id) VALUES ($1, $2)`,
+                    [nuevaPublicacion.id, habilidad_id]
+                );
+            }
+        }
 
         res.status(201).json({
             mensaje: '¡Publicación completa creada exitosamente!',
-            publicacion: rows[0]
+            publicacion: nuevaPublicacion,
+            habilidades_asignadas: habilidades || []
         });
 
     } catch (error) {

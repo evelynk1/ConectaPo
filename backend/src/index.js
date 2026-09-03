@@ -3,6 +3,9 @@ import cors from 'cors';
 import 'dotenv/config';
 import { pool } from './config/db.js';
 
+// ==========================================
+// IMPORTACIÓN DE RUTAS
+// ==========================================
 import authRoutes from './routes/auth.routes.js';
 import publicacionesRoutes from './routes/publicaciones.routes.js';
 import oficiosRoutes from './routes/oficios.routes.js'; 
@@ -17,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 // ==========================================
-// RUTAS DE LA API
+// MONTAJE DE RUTAS EN LA API
 // ==========================================
 app.use('/api/auth', authRoutes);
 app.use('/api/publicaciones', publicacionesRoutes);
