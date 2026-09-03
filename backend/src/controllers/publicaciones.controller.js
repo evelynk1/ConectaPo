@@ -113,3 +113,72 @@ export const obtenerPublicaciones = async (req, res) => {
         res.status(500).json({ error: 'Error interno al consultar las publicaciones.' });
     }
 };
+
+// Actualizar publicación con COALESCE para permitir modificaciones parciales
+export const actualizarPublicacion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const usuario_id = req.usuario.id;
+        const {
+            titulo,
+            descripcion,
+            precio_base,
+            oficio_id,
+            comuna_id,
+            villa_poblacion_id,
+            anos_experiencia,
+            es_horario_conversable,
+            foto_url_1,
+            foto_url_2,
+            foto_url_3
+        } = req.body;
+
+        const query = `
+            UPDATE negocio.publicaciones 
+            SET titulo = COALESCE($1, titulo),
+                descripcion = COALESCE($2, descripcion),
+                precio_base = COALESCE($3, precio_base),
+                oficio_id = COALESCE($4, oficio_id),
+                comuna_id = COALESCE($5, comuna_id),
+                villa_poblacion_id = COALESCE($6, villa_poblacion_id),
+                anos_experiencia = COALESCE($7, anos_experiencia),
+                es_horario_conversable = COALESCE($8, es_horario_conversable),
+                foto_url_1 = COALESCE($9, foto_url_1),
+                foto_url_2 = COALESCE($10, foto_url_2),
+                foto_url_3 = COALESCE($11, foto_url_3)
+            WHERE id = $12 AND usuario_id = $13
+            RETURNING *;
+        `;
+
+        const values = [
+            titulo,
+            descripcion,
+            precio_base,
+            oficio_id,
+            comuna_id,
+            villa_poblacion_id,
+            anos_experiencia,
+            es_horario_conversable,
+            foto_url_1,
+            foto_url_2,
+            foto_url_3,
+            id,
+            usuario_id
+        ];
+
+        const { rows } = await pool.query(query, values);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Publicación no encontrada o no autorizada para actualizar.' });
+        }
+
+        res.status(200).json({
+            mensaje: '¡Publicación actualizada exitosamente!',
+            publicacion: rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error al actualizar publicación:', error);
+        res.status(500).json({ error: 'Error interno del servidor al actualizar la publicación.' });
+    }
+};

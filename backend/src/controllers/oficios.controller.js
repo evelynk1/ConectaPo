@@ -55,3 +55,44 @@ export const obtenerOficios = async (req, res) => {
         res.status(500).json({ error: 'Error interno al obtener los oficios.' });
     }
 };
+
+export const actualizarOficio = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre, icono_url } = req.body;
+
+        // ==========================================
+        // ACTUALIZACIÓN PARCIAL CON COALESCE (PUT)
+        // ==========================================
+        
+        const query = `
+            UPDATE negocio.oficios 
+            SET 
+                nombre = COALESCE($1, nombre),
+                icono_url = COALESCE($2, icono_url)
+            WHERE id = $3
+            RETURNING id, nombre, icono_url;
+        `;
+
+        const { rows } = await pool.query(query, [nombre, icono_url, id]);
+        // ==========================================
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Oficio no encontrado.' });
+        }
+
+        res.json({
+            mensaje: '¡Oficio actualizado exitosamente!',
+            oficio: rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error al actualizar el oficio:', error);
+
+        if (error.code === '23505') {
+            return res.status(400).json({ error: 'Ya existe otro oficio con ese nombre.' });
+        }
+
+        res.status(500).json({ error: 'Error interno al actualizar el oficio.' });
+    }
+};

@@ -1,6 +1,6 @@
 // src/routes/publicaciones.routes.js
 import { Router } from 'express';
-import { crearPublicacion, obtenerPublicaciones } from '../controllers/publicaciones.controller.js';
+import { crearPublicacion, obtenerPublicaciones, actualizarPublicacion } from '../controllers/publicaciones.controller.js';
 import { verificarToken, autorizarRoles } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -10,5 +10,8 @@ router.get('/', obtenerPublicaciones);
 
 // Ruta protegida: Solo usuarios con rol CLIENTE pueden publicar
 router.post('/', verificarToken, autorizarRoles('CLIENTE'), crearPublicacion);
+
+// Ruta protegida para actualizar una publicación por su ID (UPDATE)
+router.put('/:id', verificarToken, actualizarPublicacion);
 
 export default router;

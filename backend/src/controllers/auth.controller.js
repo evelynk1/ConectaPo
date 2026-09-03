@@ -146,3 +146,78 @@ export const obtenerPerfil = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+export const actualizarPerfil = async (req, res) => {
+  try {
+    // 1. Obtenemos el ID del usuario autenticado desde el token decodificado por el middleware
+    const usuarioId = req.usuario.id;
+
+    // 2. Recibimos los campos editables que envía el frontend
+    const { 
+      nombres, 
+      primer_apellido, 
+      segundo_apellido, 
+      genero, 
+      telefono, 
+      avatar_url, 
+      comuna_id, 
+      villa_poblacion_id, 
+      instagram_url, 
+      facebook_url 
+    } = req.body;
+
+    // ==========================================
+    // ACTUALIZACIÓN PARCIAL CON COALESCE (PUT)
+    // ==========================================
+    // COALESCE evalúa los parámetros: si el valor enviado es NULL o undefined, 
+    // conserva el valor actual que ya estaba almacenado en la base de datos.
+    const query = `
+      UPDATE auth.usuarios 
+      SET 
+        nombres = COALESCE($1, nombres),
+        primer_apellido = COALESCE($2, primer_apellido),
+        segundo_apellido = COALESCE($3, segundo_apellido),
+        genero = COALESCE($4, genero),
+        telefono = COALESCE($5, telefono),
+        avatar_url = COALESCE($6, avatar_url),
+        comuna_id = COALESCE($7, comuna_id),
+        villa_poblacion_id = COALESCE($8, villa_poblacion_id),
+        instagram_url = COALESCE($9, instagram_url),
+        facebook_url = COALESCE($10, facebook_url)
+      WHERE id = $11
+      RETURNING id, rut, nombres, primer_apellido, segundo_apellido, genero, email, telefono, rol, avatar_url, comuna_id, villa_poblacion_id, instagram_url, facebook_url, created_at;
+    `;
+
+    const values = [
+      nombres, 
+      primer_apellido, 
+      segundo_apellido, 
+      genero, 
+      telefono, 
+      avatar_url, 
+      comuna_id, 
+      villa_poblacion_id, 
+      instagram_url, 
+      facebook_url,
+      usuarioId
+    ];
+
+    const resultado = await pool.query(query, values);
+    // ==========================================
+
+    // 3. Validamos si el usuario existe antes de responder
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // 4. Respondemos al frontend con el perfil ya modificado
+    res.json({
+      mensaje: '¡Perfil actualizado exitosamente!',
+      usuario: resultado.rows[0]
+    });
+
+  } catch (error) {
+    console.error('❌ Error al actualizar el perfil:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
