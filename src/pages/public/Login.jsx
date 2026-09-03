@@ -8,18 +8,18 @@ export default function Login() {
   const [pass, setPass] = useState('');
   const navigate = useNavigate();
 
-  const { login } = useUser(); // <-- 2. Extraemos la función login
+  // const { login } = useUser(); // <-- 2. Extraemos la función login
 
   const handleLogin = (e) => {
     e.preventDefault();
 
-    // aquí irá el fetch a la API
-    const mockUser = {
-      id: 1,
-      name: 'Usuario Prueba',
-      email: email,
-      rol: email.includes('admin') ? 'ADMIN' : 'USUARIO' // Truco rápido para probar roles
-    };
+    // // aquí irá el fetch a la API
+    // const mockUser = {
+    //   id: 1,
+    //   name: 'Usuario Prueba',
+    //   email: email,
+    //   rol: email.includes('admin') ? 'ADMIN' : 'USUARIO' // Truco rápido para probar roles
+    // };
     const mockToken = 'eyJhGciOiJIUzI1NiIsInR5...';
 
     // 4. Guardamos en el contexto (y por ende en localStorage)
