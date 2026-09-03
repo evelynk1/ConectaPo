@@ -8,10 +8,9 @@ import { pool } from './config/db.js';
 // ==========================================
 import authRoutes from './routes/auth.routes.js';
 import publicacionesRoutes from './routes/publicaciones.routes.js';
-import oficiosRoutes from './routes/oficios.routes.js';
-import habilidadesRoutes from './routes/habilidades.routes.js';
-import ticketsRoutes from './routes/tickets.routes.js';
+import oficiosRoutes from './routes/oficios.routes.js'; 
 import ubicacionesRoutes from './routes/ubicaciones.routes.js';
+import ticketsRoutes from './routes/tickets.routes.js';
 import usuariosRoutes from './routes/usuarios.routes.js';
 
 const app = express();
@@ -26,9 +25,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/publicaciones', publicacionesRoutes);
 app.use('/api/oficios', oficiosRoutes);
-app.use('/api/habilidades', habilidadesRoutes);
-app.use('/api/tickets', ticketsRoutes);
 app.use('/api/ubicaciones', ubicacionesRoutes);
+app.use('/api/tickets', ticketsRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 
 app.get('/', (req, res) => {

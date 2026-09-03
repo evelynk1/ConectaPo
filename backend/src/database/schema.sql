@@ -137,18 +137,21 @@ CREATE TABLE negocio.evaluaciones (
 );
 
 -- ==========================================
--- 5. SCHEMA SOPORTE
+-- 5. SCHEMA SOPORTE (Actualizado)
 -- ==========================================
 CREATE TABLE soporte.tipos_ticket (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) UNIQUE NOT NULL
 );
 
-CREATE TABLE soporte.tickets_soporte (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    usuario_id UUID REFERENCES auth.usuarios(id) ON DELETE CASCADE,
-    tipo_ticket_id INT REFERENCES soporte.tipos_ticket(id) ON DELETE RESTRICT,
-    mensaje TEXT NOT NULL,
-    estado VARCHAR(20) DEFAULT 'PENDIENTE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Actualizado para usar UUID en el ID del ticket, mantener UUID para el usuario,
+-- y coincidir exactamente con los campos requeridos por el controlador (asunto, descripcion).
+CREATE TABLE soporte.tickets (
+    id SERIAL PRIMARY KEY,
+    usuario_id UUID NOT NULL,
+    asunto VARCHAR(150) NOT NULL,
+    descripcion TEXT NOT NULL,
+    estado VARCHAR(50) DEFAULT 'ABIERTO',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_usuario FOREIGN KEY (usuario_id) REFERENCES auth.usuarios(id) ON DELETE CASCADE
 );
