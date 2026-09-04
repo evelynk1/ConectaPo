@@ -1,7 +1,6 @@
 -- ==========================================
 -- 0. DESTRUCCIÓN PREVIA (SOLO PARA DESARROLLO)
 -- ==========================================
--- Al borrar los esquemas en cascada, nos echamos todas las tablas de una vez
 DROP SCHEMA IF EXISTS ubicaciones CASCADE;
 DROP SCHEMA IF EXISTS auth CASCADE;
 DROP SCHEMA IF EXISTS negocio CASCADE;
@@ -109,7 +108,6 @@ CREATE TABLE negocio.publicaciones (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
 CREATE TABLE negocio.publicaciones_habilidades (
     publicacion_id UUID REFERENCES negocio.publicaciones(id) ON DELETE CASCADE,
     habilidad_id INT REFERENCES auth.habilidades(id) ON DELETE CASCADE,
@@ -117,35 +115,37 @@ CREATE TABLE negocio.publicaciones_habilidades (
     PRIMARY KEY (publicacion_id, habilidad_id)
 );
 
-
 CREATE TABLE negocio.bloques_horarios (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     publicacion_id UUID REFERENCES negocio.publicaciones(id) ON DELETE CASCADE,
+    cliente_id UUID REFERENCES auth.usuarios(id) ON DELETE SET NULL, -- NUEVO: Para rastrear quién reservó
     fecha_hora_inicio TIMESTAMP NOT NULL,
     fecha_hora_fin TIMESTAMP NOT NULL,
     estado VARCHAR(20) DEFAULT 'DISPONIBLE', -- DISPONIBLE, RESERVADO, COMPLETADO
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ACTUALIZADO: Tabla de evaluaciones mutuas vinculada al bloque y actores específicos
 CREATE TABLE negocio.evaluaciones (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bloque_horario_id UUID REFERENCES negocio.bloques_horarios(id) ON DELETE CASCADE,
     publicacion_id UUID REFERENCES negocio.publicaciones(id) ON DELETE CASCADE,
     evaluador_id UUID REFERENCES auth.usuarios(id) ON DELETE CASCADE,
+    evaluado_id UUID REFERENCES auth.usuarios(id) ON DELETE CASCADE,
     calificacion INT NOT NULL CHECK (calificacion >= 1 AND calificacion <= 5),
     comentario TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(bloque_horario_id, evaluador_id) -- Garantiza 1 sola reseña por persona por trabajo
 );
 
 -- ==========================================
--- 5. SCHEMA SOPORTE (Actualizado)
+-- 5. SCHEMA SOPORTE
 -- ==========================================
 CREATE TABLE soporte.tipos_ticket (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) UNIQUE NOT NULL
 );
 
--- Actualizado para usar UUID en el ID del ticket, mantener UUID para el usuario,
--- y coincidir exactamente con los campos requeridos por el controlador (asunto, descripcion).
 CREATE TABLE soporte.tickets (
     id SERIAL PRIMARY KEY,
     usuario_id UUID NOT NULL,

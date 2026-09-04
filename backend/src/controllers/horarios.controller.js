@@ -150,44 +150,28 @@ export const eliminarBloqueHorario = async (req, res) => {
 export const reservarBloque = async (req, res) => {
     try {
         const { id } = req.params;
+        const usuario_id_cliente = req.usuario.id; // Obtenemos el ID del cliente que presiona el botón
 
-        // Buscamos el bloque directamente
-        const checkQuery = `
-            SELECT estado, fecha_hora_inicio 
-            FROM negocio.bloques_horarios 
-            WHERE id = $1
-        `;
+        const checkQuery = `SELECT estado, fecha_hora_inicio FROM negocio.bloques_horarios WHERE id = $1`;
         const { rows } = await pool.query(checkQuery, [id]);
 
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Bloque horario no encontrado.' });
-        }
-
+        if (rows.length === 0) return res.status(404).json({ error: 'Bloque horario no encontrado.' });
+        
         const bloque = rows[0];
 
-        // Validamos que esté disponible
-        if (bloque.estado !== 'DISPONIBLE') {
-            return res.status(400).json({ error: 'Este bloque ya no está disponible.' });
-        }
+        if (bloque.estado !== 'DISPONIBLE') return res.status(400).json({ error: 'Este bloque ya no está disponible.' });
+        if (new Date(bloque.fecha_hora_inicio) <= new Date()) return res.status(400).json({ error: 'No puedes reservar un bloque del pasado.' });
 
-        // Validamos que no sea en el pasado
-        if (new Date(bloque.fecha_hora_inicio) <= new Date()) {
-            return res.status(400).json({ error: 'No puedes reservar un bloque del pasado.' });
-        }
-
-        // Lo pasamos a RESERVADO
+        // AHORA GUARDAMOS AL CLIENTE TAMBIÉN
         const updateQuery = `
             UPDATE negocio.bloques_horarios 
-            SET estado = 'RESERVADO' 
+            SET estado = 'RESERVADO', cliente_id = $2 
             WHERE id = $1 
             RETURNING *;
         `;
-        const result = await pool.query(updateQuery, [id]);
+        const result = await pool.query(updateQuery, [id, usuario_id_cliente]);
 
-        res.status(200).json({ 
-            mensaje: '¡Bloque reservado exitosamente!', 
-            bloque: result.rows[0] 
-        });
+        res.status(200).json({ mensaje: '¡Bloque reservado exitosamente!', bloque: result.rows[0] });
 
     } catch (error) {
         console.error('❌ Error al reservar bloque:', error);

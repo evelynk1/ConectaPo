@@ -14,6 +14,7 @@ import ticketsRoutes from './routes/tickets.routes.js';
 import usuariosRoutes from './routes/usuarios.routes.js';
 import habilidadesRoutes from './routes/habilidades.routes.js';
 import horariosRoutes from './routes/horarios.routes.js';
+import evaluacionesRoutes from './routes/evaluaciones.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/habilidades', habilidadesRoutes);
 app.use('/api/horarios', horariosRoutes);
+app.use('/api/evaluaciones', evaluacionesRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: '¡Servidor de ConectaPo funcionando al 100%!' });
