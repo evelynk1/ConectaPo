@@ -93,3 +93,32 @@ export const actualizarTicket = async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor al actualizar el ticket.' });
     }
 };
+// ==========================================
+// ELIMINAR TICKET (DELETE)
+// ==========================================
+export const eliminarTicket = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const query = `
+            DELETE FROM soporte.tickets 
+            WHERE id = $1 
+            RETURNING id, asunto;
+        `;
+
+        const { rows } = await pool.query(query, [id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Ticket de soporte no encontrado.' });
+        }
+
+        res.status(200).json({
+            mensaje: '¡Ticket eliminado exitosamente!',
+            ticket: rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error al eliminar el ticket:', error);
+        res.status(500).json({ error: 'Error interno del servidor al eliminar el ticket.' });
+    }
+};

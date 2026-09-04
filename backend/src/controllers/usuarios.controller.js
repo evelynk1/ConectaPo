@@ -1,12 +1,11 @@
 import { pool } from '../config/db.js';
-import { Router } from 'express';
 
 // ==========================================
 // OBTENER PERFIL DEL USUARIO LOGUEADO
 // ==========================================
 export const obtenerPerfil = async (req, res) => {
     try {
-        const usuario_id = req.usuario.id; // Viene del token
+        const usuario_id = req.usuario.id;
 
         const query = `
             SELECT id, rut, nombres, primer_apellido, segundo_apellido, genero, 
@@ -73,18 +72,3 @@ export const actualizarPerfil = async (req, res) => {
         res.status(500).json({ error: 'Error interno al actualizar el perfil.' });
     }
 };
-
-// ==========================================
-// CONFIGURACIÓN DE RUTAS (PUT Y GET)
-// ==========================================
-
-const router = Router();
-
-// Ruta GET para obtener el perfil del usuario autenticado
-router.get('/perfil', verificarToken, obtenerPerfil);
-
-// RUTA PUT AÑADIDA:
-
-router.put('/perfil', verificarToken, actualizarPerfil);
-
-export default router;
