@@ -13,6 +13,7 @@ import ubicacionesRoutes from './routes/ubicaciones.routes.js';
 import ticketsRoutes from './routes/tickets.routes.js';
 import usuariosRoutes from './routes/usuarios.routes.js';
 import habilidadesRoutes from './routes/habilidades.routes.js';
+import horariosRoutes from './routes/horarios.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.use('/api/ubicaciones', ubicacionesRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/habilidades', habilidadesRoutes);
+app.use('/api/horarios', horariosRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: '¡Servidor de ConectaPo funcionando al 100%!' });
