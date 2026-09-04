@@ -178,3 +178,34 @@ export const actualizarPublicacion = async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor al actualizar la publicación.' });
     }
 };
+// Eliminar publicación (o asegurarte de que solo el dueño pueda borrarla)
+export const eliminarPublicacion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const usuario_id = req.usuario.id;
+
+        // Opcional: Primero puedes borrar las relaciones de la tabla intermedia si no tienes ON DELETE CASCADE en tu BD
+        await pool.query(`DELETE FROM negocio.publicaciones_habilidades WHERE publicacion_id = $1`, [id]);
+
+        const query = `
+            DELETE FROM negocio.publicaciones 
+            WHERE id = $1 AND usuario_id = $2
+            RETURNING id, titulo;
+        `;
+
+        const { rows } = await pool.query(query, [id, usuario_id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Publicación no encontrada o no autorizada para eliminar.' });
+        }
+
+        res.status(200).json({
+            mensaje: '¡Publicación eliminada exitosamente!',
+            publicacion: rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error al eliminar publicación:', error);
+        res.status(500).json({ error: 'Error interno del servidor al eliminar la publicación.' });
+    }
+};

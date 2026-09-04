@@ -221,3 +221,40 @@ export const actualizarPerfil = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+export const desactivarUsuario = async (req, res) => {
+  try {
+    // 1. Obtenemos el ID del usuario desde los parámetros de la ruta
+    const { id } = req.params;
+
+    // ==========================================
+    // BORRADO LÓGICO DE USUARIO (DELETE / PATCH)
+    // ==========================================
+    // Cambiamos el estado is_active a false para desactivar lógicamente el registro 
+    // sin perder la integridad referencial ni borrar datos de la base de datos.
+    const query = `
+      UPDATE auth.usuarios 
+      SET is_active = false 
+      WHERE id = $1 
+      RETURNING id, email, is_active;
+    `;
+
+    const resultado = await pool.query(query, [id]);
+    // ==========================================
+
+    // 3. Validamos si el usuario existe en la base de datos
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // 4. Respondemos al frontend con el éxito de la operación
+    res.json({
+      mensaje: 'Usuario desactivado correctamente',
+      usuario: resultado.rows[0]
+    });
+
+  } catch (error) {
+    console.error('❌ Error al desactivar el usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
