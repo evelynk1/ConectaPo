@@ -8,7 +8,7 @@ import { pool } from './config/db.js';
 // ==========================================
 import authRoutes from './routes/auth.routes.js';
 import publicacionesRoutes from './routes/publicaciones.routes.js';
-import oficiosRoutes from './routes/oficios.routes.js'; 
+import oficiosRoutes from './routes/oficios.routes.js';
 import ubicacionesRoutes from './routes/ubicaciones.routes.js';
 import ticketsRoutes from './routes/tickets.routes.js';
 import usuariosRoutes from './routes/usuarios.routes.js';
@@ -37,6 +37,18 @@ app.use('/api/evaluaciones', evaluacionesRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: '¡Servidor de ConectaPo funcionando al 100%!' });
+});
+
+
+// ==========================================
+// ATRAPADOR DE ERRORES GLOBAL
+// ==========================================
+app.use((err, req, res, next) => {
+  console.error('🔥 ERROR CAPTURADO POR EXPRESS:', err);
+  res.status(500).json({
+    error: 'Algo reventó antes de llegar al controlador',
+    detalle: err.message || err
+  });
 });
 
 app.listen(PORT, () => {
