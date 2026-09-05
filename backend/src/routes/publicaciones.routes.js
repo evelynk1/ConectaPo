@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import { 
-    crearPublicacion, 
-    obtenerPublicaciones, 
-    actualizarPublicacion, 
-    eliminarPublicacion 
+import {
+    crearPublicacion,
+    obtenerPublicaciones,
+    actualizarPublicacion,
+    subirFotosPublicacion,
+    eliminarPublicacion
 } from '../controllers/publicaciones.controller.js';
 import { verificarToken, autorizarRoles } from '../middlewares/auth.middleware.js';
+import { upload } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
@@ -20,5 +22,11 @@ router.put('/:id', verificarToken, actualizarPublicacion);
 
 // Ruta protegida para eliminar una publicación por su ID (DELETE)
 router.delete('/:id', verificarToken, eliminarPublicacion);
+
+router.put('/:id/fotos', verificarToken, upload.fields([
+    { name: 'foto1', maxCount: 1 },
+    { name: 'foto2', maxCount: 1 },
+    { name: 'foto3', maxCount: 1 }
+]), subirFotosPublicacion);
 
 export default router;

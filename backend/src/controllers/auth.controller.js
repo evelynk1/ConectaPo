@@ -1,13 +1,13 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { pool } from '../config/db.js';
 import jwt from 'jsonwebtoken';
 
 export const registrarUsuario = async (req, res) => {
   try {
-    // 1. Recibimos los datos que envía el frontend
+
     const { rut, nombres, primer_apellido, email, telefono, password } = req.body;
 
-    // 2. Validamos que vengan los datos obligatorios
     if (!rut || !nombres || !primer_apellido || !email || !password) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
@@ -15,17 +15,15 @@ export const registrarUsuario = async (req, res) => {
     // ==========================================
     // VALIDACIÓN DE CONTRASEÑA
     // ==========================================
-    // Regex: Mínimo 6 caracteres, al menos 1 letra y 1 número. Permite símbolos.
+    // Mínimo 6 caracteres, al menos 1 letra y 1 número. Permite símbolos.
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
-    
+
     if (!passwordRegex.test(password)) {
-      return res.status(400).json({ 
-        error: 'La contraseña debe tener al menos 6 caracteres, e incluir tanto letras como números.' 
+      return res.status(400).json({
+        error: 'La contraseña debe tener al menos 6 caracteres, e incluir tanto letras como números.'
       });
     }
-    // ==========================================
 
-    // 3. Verificamos si el correo o rut ya existen
     const usuarioExistente = await pool.query(
       'SELECT * FROM auth.usuarios WHERE email = $1 OR rut = $2',
       [email, rut]
@@ -35,20 +33,17 @@ export const registrarUsuario = async (req, res) => {
       return res.status(400).json({ error: 'El RUT o Correo ya están registrados' });
     }
 
-    // 4. Encriptamos la contraseña
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // 5. Guardamos en la base de datos
     const nuevoUsuario = await pool.query(
       `INSERT INTO auth.usuarios 
       (rut, nombres, primer_apellido, email, telefono, password_hash) 
       VALUES ($1, $2, $3, $4, $5, $6) 
-      RETURNING id, nombres, email, rol`, 
+      RETURNING id, nombres, email, rol`,
       [rut, nombres, primer_apellido, email, telefono, passwordHash]
     );
 
-    // 6. Respondemos al frontend con éxito
     res.status(201).json({
       mensaje: 'Usuario registrado con éxito',
       usuario: nuevoUsuario.rows[0]
@@ -64,12 +59,10 @@ export const loginUsuario = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Validamos que vengan los datos
     if (!email || !password) {
       return res.status(400).json({ error: 'Faltan credenciales' });
     }
 
-    // 2. Buscamos al usuario en la base de datos
     const resultado = await pool.query(
       'SELECT * FROM auth.usuarios WHERE email = $1 AND is_active = true',
       [email]
@@ -81,21 +74,19 @@ export const loginUsuario = async (req, res) => {
 
     const usuario = resultado.rows[0];
 
-    // 3. Comparamos la contraseña encriptada
     const claveValida = await bcrypt.compare(password, usuario.password_hash);
 
     if (!claveValida) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // 4. Generamos Token JWT
     const token = jwt.sign(
-      { id: usuario.id, rol: usuario.rol }, 
+      { id: usuario.id, rol: usuario.rol },
       process.env.JWT_SECRET,
       { expiresIn: '24h' } // El token durará 1 día
     );
 
-    // 5. Respondemos con éxito
+
     res.json({
       mensaje: 'Login exitoso',
       token: token,
@@ -115,30 +106,27 @@ export const loginUsuario = async (req, res) => {
 
 export const obtenerPerfil = async (req, res) => {
   try {
-    // 1. Obtenemos el ID del usuario decodificado desde el token (inyectado por el middleware)
+
     const usuarioId = req.usuario.id;
 
     // ==========================================
     // CONSULTA DE PERFIL (SELECT)
     // ==========================================
-    // Seleccionamos todos los campos públicos del usuario usando su ID, omitiendo el password por seguridad.
+
     const resultado = await pool.query(
       `SELECT id, rut, nombres, primer_apellido, segundo_apellido, genero, email, telefono, rol, avatar_url, comuna_id, villa_poblacion_id, ultima_conexion, instagram_url, facebook_url, is_active, strikes, created_at 
        FROM auth.usuarios 
        WHERE id = $1`,
       [usuarioId]
     );
-    // ==========================================
 
-    // 3. Validamos si el usuario existe en la base de datos
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // 4. Respondemos al frontend con los datos obtenidos directamente de la BD
     res.json({
       mensaje: '¡Bienvenido a ConectaPo!',
-      usuario_conectado: resultado.rows[0] 
+      usuario_conectado: resultado.rows[0]
     });
 
   } catch (error) {
@@ -149,28 +137,23 @@ export const obtenerPerfil = async (req, res) => {
 
 export const actualizarPerfil = async (req, res) => {
   try {
-    // 1. Obtenemos el ID del usuario autenticado desde el token decodificado por el middleware
     const usuarioId = req.usuario.id;
-
-    // 2. Recibimos los campos editables que envía el frontend
-    const { 
-      nombres, 
-      primer_apellido, 
-      segundo_apellido, 
-      genero, 
-      telefono, 
-      avatar_url, 
-      comuna_id, 
-      villa_poblacion_id, 
-      instagram_url, 
-      facebook_url 
+    const {
+      nombres,
+      primer_apellido,
+      segundo_apellido,
+      genero,
+      telefono,
+      avatar_url,
+      comuna_id,
+      villa_poblacion_id,
+      instagram_url,
+      facebook_url
     } = req.body;
 
     // ==========================================
     // ACTUALIZACIÓN PARCIAL CON COALESCE (PUT)
     // ==========================================
-    // COALESCE evalúa los parámetros: si el valor enviado es NULL o undefined, 
-    // conserva el valor actual que ya estaba almacenado en la base de datos.
     const query = `
       UPDATE auth.usuarios 
       SET 
@@ -189,28 +172,25 @@ export const actualizarPerfil = async (req, res) => {
     `;
 
     const values = [
-      nombres, 
-      primer_apellido, 
-      segundo_apellido, 
-      genero, 
-      telefono, 
-      avatar_url, 
-      comuna_id, 
-      villa_poblacion_id, 
-      instagram_url, 
+      nombres,
+      primer_apellido,
+      segundo_apellido,
+      genero,
+      telefono,
+      avatar_url,
+      comuna_id,
+      villa_poblacion_id,
+      instagram_url,
       facebook_url,
       usuarioId
     ];
 
     const resultado = await pool.query(query, values);
-    // ==========================================
 
-    // 3. Validamos si el usuario existe antes de responder
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // 4. Respondemos al frontend con el perfil ya modificado
     res.json({
       mensaje: '¡Perfil actualizado exitosamente!',
       usuario: resultado.rows[0]
@@ -240,14 +220,11 @@ export const desactivarUsuario = async (req, res) => {
     `;
 
     const resultado = await pool.query(query, [id]);
-    // ==========================================
 
-    // 3. Validamos si el usuario existe en la base de datos
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // 4. Respondemos al frontend con el éxito de la operación
     res.json({
       mensaje: 'Usuario desactivado correctamente',
       usuario: resultado.rows[0]
@@ -256,5 +233,107 @@ export const desactivarUsuario = async (req, res) => {
   } catch (error) {
     console.error('❌ Error al desactivar el usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// ==========================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ==========================================
+// PASO 1: SOLICITAR RECUPERACIÓN (Generar Link)
+// ==========================================
+export const solicitarRecuperacion = async (req, res) => {
+  try {
+    const { telefono } = req.body;
+
+    if (!telefono) {
+      return res.status(400).json({ error: 'Debes proporcionar un número de teléfono.' });
+    }
+
+    const userQuery = await pool.query('SELECT id, nombres FROM auth.usuarios WHERE telefono = $1', [telefono]);
+    if (userQuery.rows.length === 0) {
+      return res.status(200).json({ mensaje: 'Si el número existe, se ha enviado un link de recuperación.' });
+    }
+
+    const usuario = userQuery.rows[0];
+
+    // 1. Solo generamos el token en Node
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // 2. Guardar en BD: Dejamos que Postgres calcule los 15 minutos
+    await pool.query(
+      `UPDATE auth.usuarios 
+       SET reset_token = $1, 
+           reset_token_expires = NOW() + INTERVAL '15 minutes' 
+       WHERE id = $2`,
+      [resetToken, usuario.id]
+    );
+
+    // 3. SIMULACIÓN DE WHATSAPP
+    const linkRecuperacion = `https://conectapo.cl/recuperar?token=${resetToken}`;
+
+    console.log(`\n📲 [SIMULACIÓN WHATSAPP] Enviando mensaje a ${telefono}...`);
+    console.log(`Hola ${usuario.nombres}, para recuperar tu contraseña ingresa a: ${linkRecuperacion}\n`);
+
+    res.status(200).json({
+      mensaje: 'Link de recuperación generado exitosamente (revisa la consola del servidor).',
+      linkSimulado: linkRecuperacion,
+      token: resetToken
+    });
+
+  } catch (error) {
+    console.error('❌ Error al solicitar recuperación:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+};
+
+// ==========================================
+// PASO 2: RESETEAR CONTRASEÑA (Usar el Token)
+// ==========================================
+export const resetearPassword = async (req, res) => {
+  try {
+    const { token, nueva_password } = req.body;
+
+    if (!token || !nueva_password) {
+      return res.status(400).json({ error: 'El token y la nueva contraseña son obligatorios.' });
+    }
+
+    // ==========================================
+    // VALIDACIÓN DE CONTRASEÑA (Igual que en Registro)
+    // ==========================================
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+    if (!passwordRegex.test(nueva_password)) {
+      return res.status(400).json({
+        error: 'La nueva contraseña debe tener al menos 6 caracteres, e incluir tanto letras como números.'
+      });
+    }
+
+    // 1. Buscar usuario con token vigente
+    const query = `
+            SELECT id FROM auth.usuarios 
+            WHERE reset_token = $1 AND reset_token_expires > NOW()
+        `;
+    const result = await pool.query(query, [token]);
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'El token es inválido o ha expirado.' });
+    }
+
+    const usuario_id = result.rows[0].id;
+
+    // 2. Encriptar la nueva contraseña
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(nueva_password, salt);
+
+    // 3. Actualizar contraseña y limpiar el token
+    await pool.query(
+      'UPDATE auth.usuarios SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
+      [hashedPassword, usuario_id]
+    );
+
+    res.status(200).json({ mensaje: '¡Contraseña actualizada con éxito! Ya puedes iniciar sesión.' });
+
+  } catch (error) {
+    console.error('❌ Error al resetear contraseña:', error);
+    res.status(500).json({ error: 'Error interno al cambiar la contraseña.' });
   }
 };

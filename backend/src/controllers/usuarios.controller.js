@@ -55,8 +55,8 @@ export const actualizarPerfil = async (req, res) => {
         `;
 
         const values = [
-            nombres, primer_apellido, segundo_apellido, telefono, 
-            avatar_url, comuna_id, villa_poblacion_id, instagram_url, 
+            nombres, primer_apellido, segundo_apellido, telefono,
+            avatar_url, comuna_id, villa_poblacion_id, instagram_url,
             facebook_url, usuario_id
         ];
 
@@ -70,5 +70,36 @@ export const actualizarPerfil = async (req, res) => {
     } catch (error) {
         console.error('❌ Error al actualizar el perfil:', error);
         res.status(500).json({ error: 'Error interno al actualizar el perfil.' });
+    }
+};
+
+// ==========================================
+// SUBIR AVATAR DE USUARIO
+// ==========================================
+export const subirAvatar = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se subió ninguna imagen.' });
+        }
+
+        const usuario_id = req.usuario.id;
+        const avatar_url = req.file.path;
+
+        const updateQuery = `
+            UPDATE auth.usuarios 
+            SET avatar_url = $1 
+            WHERE id = $2 
+            RETURNING id, nombres, avatar_url;
+        `;
+        const { rows } = await pool.query(updateQuery, [avatar_url, usuario_id]);
+
+        res.status(200).json({
+            mensaje: '¡Foto de perfil actualizada con éxito!',
+            usuario: rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error al subir avatar:', error);
+        res.status(500).json({ error: 'Error interno al guardar la foto.' });
     }
 };

@@ -209,3 +209,59 @@ export const eliminarPublicacion = async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor al eliminar la publicación.' });
     }
 };
+
+// ==========================================
+// SUBIR FOTOS A UNA PUBLICACIÓN
+// ==========================================
+export const subirFotosPublicacion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const usuario_id = req.usuario.id;
+
+        const checkPub = await pool.query('SELECT id FROM negocio.publicaciones WHERE id = $1 AND usuario_id = $2', [id, usuario_id]);
+        if (checkPub.rows.length === 0) {
+            return res.status(403).json({ error: 'Publicación no encontrada o no tienes permiso para editarla.' });
+        }
+
+        let updates = [];
+        let values = [];
+        let paramIndex = 1;
+
+        if (req.files?.foto1) {
+            updates.push(`foto_url_1 = $${paramIndex++}`);
+            values.push(req.files.foto1[0].path);
+        }
+        if (req.files?.foto2) {
+            updates.push(`foto_url_2 = $${paramIndex++}`);
+            values.push(req.files.foto2[0].path);
+        }
+        if (req.files?.foto3) {
+            updates.push(`foto_url_3 = $${paramIndex++}`);
+            values.push(req.files.foto3[0].path);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No se subió ninguna imagen.' });
+        }
+
+        values.push(id);
+
+        const updateQuery = `
+            UPDATE negocio.publicaciones 
+            SET ${updates.join(', ')} 
+            WHERE id = $${paramIndex} 
+            RETURNING id, titulo, foto_url_1, foto_url_2, foto_url_3;
+        `;
+
+        const { rows } = await pool.query(updateQuery, values);
+
+        res.status(200).json({
+            mensaje: '¡Fotos de la publicación actualizadas con éxito!',
+            publicacion: rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error al subir fotos de publicación:', error);
+        res.status(500).json({ error: 'Error interno al guardar las fotos.' });
+    }
+};
