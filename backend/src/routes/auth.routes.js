@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { 
-  registrarUsuario, 
-  loginUsuario, 
-  obtenerPerfil, 
+import {
+  registrarUsuario,
+  loginUsuario,
+  obtenerPerfil,
   actualizarPerfil,
-  desactivarUsuario // 1. Añadido a las importaciones
+  desactivarUsuario
 } from '../controllers/auth.controller.js';
 import { verificarToken, autorizarRoles } from '../middlewares/auth.middleware.js';
+import { solicitarRecuperacion, resetearPassword } from '../controllers/auth.controller.js';
 
 const router = Router();
 
@@ -25,5 +26,10 @@ router.delete('/usuario/:id', verificarToken, autorizarRoles('ADMIN'), desactiva
 router.get('/admin-dashboard', verificarToken, autorizarRoles('ADMIN'), (req, res) => {
   res.json({ mensaje: 'Panel de administración exclusivo' });
 });
+
+// RUTAS DE RECUPERACIÓN
+router.post('/recuperar-password', solicitarRecuperacion);
+router.put('/resetear-password', resetearPassword);
+
 
 export default router;
