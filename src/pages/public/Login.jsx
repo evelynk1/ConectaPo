@@ -10,9 +10,10 @@ export default function Login() {
 
   // const { login } = useUser(); // <-- 2. Extraemos la función login
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
+<<<<<<< Updated upstream
     // // aquí irá el fetch a la API
     // const mockUser = {
     //   id: 1,
@@ -21,15 +22,34 @@ export default function Login() {
     //   rol: email.includes('admin') ? 'ADMIN' : 'USUARIO' // Truco rápido para probar roles
     // };
     const mockToken = 'eyJhGciOiJIUzI1NiIsInR5...';
+=======
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password: pass }),
+      });
+>>>>>>> Stashed changes
 
-    // 4. Guardamos en el contexto (y por ende en localStorage)
-    login(mockUser, mockToken);
+      const data = await response.json();
 
-    // 5. Redirigimos según el rol
-    if (mockUser.rol === 'ADMIN') {
-      navigate('/admin');
-    } else {
-      navigate('/panel/perfil');
+      if (!response.ok) {
+        throw new Error(data.mensaje || 'Error al iniciar sesión');
+      }
+
+      // Guardamos el usuario real y el token devueltos por tu backend
+      login(data.user, data.token);
+
+      // Redirigimos según el rol que venga de la base de datos
+      if (data.user.rol === 'ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/panel/perfil');
+      }
+    } catch (error) {
+      alert(error.message);
     }
   };
 
@@ -38,7 +58,6 @@ export default function Login() {
       {/* Columna Izquierda: Banner decorativo (Se mantiene igual) */}
       <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 bg-blue-800"
         style={{ background: 'linear-gradient(145deg, #1e40af, #2563EB)' }}>
-        {/* ... (El interior de esta columna queda exactamente igual al código original) ... */}
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '28px 28px' }} />
         <div className="relative text-white max-w-sm">
           <div className="mb-8"><ConectaPoLogo height={52} inverted /></div>
@@ -87,7 +106,6 @@ export default function Login() {
 
             <button
               type="submit"
-              // <-- Se reemplaza el style por bg-blue-600
               className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all bg-blue-600 hover:bg-blue-700 hover:shadow-lg">
               Iniciar sesión
             </button>

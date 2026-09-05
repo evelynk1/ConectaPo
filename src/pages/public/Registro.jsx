@@ -4,10 +4,10 @@ import ConectaPoLogo from '../../components/Logo'
 
 export default function Registro() {
   const [terms, setTerms] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', pass: '' })
+  const [form, setForm] = useState({ nombre: '', correo: '', telefono: '', password: '' })
   const navigate = useNavigate()
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault(); // Evita que la página recargue
 
     if (!terms) {
@@ -15,11 +15,26 @@ export default function Registro() {
       return;
     }
 
-    // Aquí a futuro irá el fetch al backend para registrar al usuario
-    console.log("Datos listos para enviar:", form);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/usuarios`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      });
 
-    // Simulamos que el registro fue exitoso y lo mandamos a iniciar sesión
-    navigate('/login');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.mensaje || 'Error al registrar el usuario');
+      }
+
+      alert("¡Registro exitoso! Por favor inicia sesión.");
+      navigate('/login');
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
   return (
@@ -57,16 +72,14 @@ export default function Registro() {
             <p className="text-xs font-semibold text-orange-500 uppercase tracking-widest mb-2">Crear cuenta</p>
             <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>Regístrate gratis</h1>
             <p className="text-slate-500 text-sm mt-1">¿Ya tienes cuenta?{' '}
-              {/* Cambiamos el setScreen por un Link real */}
               <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700">Inicia sesión</Link>
             </p>
           </div>
 
-          {/* Envolvemos en un form */}
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nombre completo</label>
-              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+              <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })}
                 required
                 placeholder="Juan Pérez García"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
@@ -74,7 +87,7 @@ export default function Registro() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Correo electrónico</label>
-              <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+              <input value={form.correo} onChange={e => setForm({ ...form, correo: e.target.value })}
                 required
                 type="email" placeholder="juan@ejemplo.cl"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
@@ -84,7 +97,7 @@ export default function Registro() {
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Teléfono</label>
               <div className="flex gap-2">
                 <span className="px-3 py-3 rounded-xl border border-slate-200 text-sm text-slate-600 bg-slate-50 shrink-0">+56</span>
-                <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
+                <input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })}
                   required
                   placeholder="9 1234 5678" type="tel"
                   className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
@@ -93,7 +106,7 @@ export default function Registro() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Contraseña</label>
-              <input value={form.pass} onChange={e => setForm({ ...form, pass: e.target.value })}
+              <input value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
                 required minLength={8}
                 type="password" placeholder="Mínimo 8 caracteres"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
