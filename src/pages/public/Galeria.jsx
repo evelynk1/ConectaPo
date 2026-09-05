@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { CATEGORIES, SERVICES } from '../../data/services'
+import { CATEGORIES } from '../../data/services'
 import StarRating from '../../components/StarRating'
+import { getPublications, normalizePublication } from '../../services/api'
 
 export default function Galeria() {
   const navigate = useNavigate()
@@ -24,9 +25,19 @@ export default function Galeria() {
   const [categoria, setCategoria] = useState('')
   const [comuna, setComuna] = useState('')
   const [sort, setSort] = useState('rating')
+  const [services, setServices] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getPublications()
+      .then(publications => setServices(publications.map(normalizePublication)))
+      .catch(() => setError('No fue posible cargar los servicios. Intenta nuevamente.'))
+      .finally(() => setLoading(false))
+  }, [])
 
   // Lógica para filtrar y ordenar los servicios según los inputs del usuario
-  const filteredServices = SERVICES.filter(s => {
+  const filteredServices = services.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
                           s.trade.toLowerCase().includes(search.toLowerCase())
     const matchesCategoria = categoria === '' || s.trade === categoria || s.category === categoria
@@ -105,7 +116,15 @@ export default function Galeria() {
         {/* ------------------------------------------------------------------ */}
         {/* GRILLA DE TARJETAS DE PROFESIONALES                                */}
         {/* ------------------------------------------------------------------ */}
-        {filteredServices.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-16 bg-white rounded-2xl border border-slate-100">
+            <p className="text-slate-500 text-sm">Cargando servicios...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-16 bg-white rounded-2xl border border-slate-100">
+            <p className="text-slate-500 text-sm">{error}</p>
+          </div>
+        ) : filteredServices.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-slate-100">
             <p className="text-slate-500 text-sm">No se encontraron profesionales con los filtros seleccionados.</p>
           </div>

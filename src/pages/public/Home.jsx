@@ -1,12 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom' // 1. Importamos el hook de navegación
 import { CATEGORIES, SERVICES } from '../../data/services' 
 import ServiceCard from '../../components/ServiceCard'
+import { getPublications, normalizePublication } from '../../services/api'
 
 export default function Home() {
   const [search, setSearch] = useState('')
   const [comuna, setComuna] = useState('')
+  const [services, setServices] = useState([])
   const navigate = useNavigate() // 2. Inicializamos el hook
+
+  useEffect(() => {
+    getPublications()
+      .then(publications => setServices(publications.map(normalizePublication)))
+      .catch(() => setServices(SERVICES))
+  }, [])
 
   // Función al enviar el formulario de búsqueda del Hero
   const handleSearch = (e) => {
@@ -116,7 +124,7 @@ export default function Home() {
             </button>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SERVICES.slice(0, 3).map(s => (
+            {services.slice(0, 3).map(s => (
               <ServiceCard key={s.id} service={s} />
             ))}
           </div>

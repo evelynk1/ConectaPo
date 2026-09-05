@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ConectaPoLogo from '../../components/Logo'
+import { registerUser } from '../../services/api'
 
 export default function Registro() {
   const [terms, setTerms] = useState(false)
-  const [form, setForm] = useState({ nombre: '', correo: '', telefono: '', password: '' })
+  const [form, setForm] = useState({ nombre: '', rut: '', correo: '', telefono: '', password: '', rol: 'CLIENTE', comuna_id: '' })
   const navigate = useNavigate()
 
   const handleRegister = async (e) => {
@@ -16,19 +17,15 @@ export default function Registro() {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/usuarios`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.mensaje || 'Error al registrar el usuario');
-      }
+      await registerUser({
+        nombre: form.nombre,
+        rut: form.rut,
+        email: form.correo,
+        telefono: form.telefono,
+        password: form.password,
+        rol: form.rol,
+        comuna_id: Number(form.comuna_id),
+      })
 
       alert("¡Registro exitoso! Por favor inicia sesión.");
       navigate('/login');
@@ -86,6 +83,13 @@ export default function Registro() {
             </div>
 
             <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">RUT</label>
+              <input value={form.rut} onChange={e => setForm({ ...form, rut: e.target.value })}
+                required placeholder="12.345.678-9"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+            </div>
+
+            <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Correo electrónico</label>
               <input value={form.correo} onChange={e => setForm({ ...form, correo: e.target.value })}
                 required
@@ -101,6 +105,23 @@ export default function Registro() {
                   required
                   placeholder="9 1234 5678" type="tel"
                   className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tipo de cuenta</label>
+                <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                  <option value="CLIENTE">Cliente</option>
+                  <option value="PROFESIONAL">Profesional</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ID comuna</label>
+                <input value={form.comuna_id} onChange={e => setForm({ ...form, comuna_id: e.target.value })}
+                  required min="1" type="number" placeholder="Ej. 15"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
               </div>
             </div>
 

@@ -1,49 +1,24 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ConectaPoLogo from '../../components/Logo';
-import { useUser } from '../../context/useUser'; // <-- el hook del contexto
+import { useUser } from '../../context/useUser';
+import { loginUser } from '../../services/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const navigate = useNavigate();
-
-  // const { login } = useUser(); // <-- 2. Extraemos la función login
+  const { login } = useUser();
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
-<<<<<<< Updated upstream
-    // // aquí irá el fetch a la API
-    // const mockUser = {
-    //   id: 1,
-    //   name: 'Usuario Prueba',
-    //   email: email,
-    //   rol: email.includes('admin') ? 'ADMIN' : 'USUARIO' // Truco rápido para probar roles
-    // };
-    const mockToken = 'eyJhGciOiJIUzI1NiIsInR5...';
-=======
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password: pass }),
-      });
->>>>>>> Stashed changes
+      const { user, token } = await loginUser({ email, password: pass });
 
-      const data = await response.json();
+      login(user, token);
 
-      if (!response.ok) {
-        throw new Error(data.mensaje || 'Error al iniciar sesión');
-      }
-
-      // Guardamos el usuario real y el token devueltos por tu backend
-      login(data.user, data.token);
-
-      // Redirigimos según el rol que venga de la base de datos
-      if (data.user.rol === 'ADMIN') {
+      if (user.rol === 'ADMIN') {
         navigate('/admin');
       } else {
         navigate('/panel/perfil');
