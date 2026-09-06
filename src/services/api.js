@@ -98,3 +98,32 @@ export function createScheduleBlocks(blocks, token) {
     body: JSON.stringify(schedule),
   })
 }
+
+// ==========================================
+// FUNCIONES DEL PERFIL DE USUARIO
+// ==========================================
+
+export async function getUserProfile(token) {
+  const data = await request('/api/auth/perfil', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(token)
+    },
+  });
+  // Nuestro backend devuelve { mensaje, usuario_conectado }
+  return data.usuario_conectado;
+}
+
+export async function updateUserProfile(profileData, token) {
+  const data = await request('/api/auth/perfil', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(token)
+    },
+    body: JSON.stringify(profileData),
+  });
+  // Nuestro backend devuelve { mensaje, usuario }
+  return data.usuario;
+}

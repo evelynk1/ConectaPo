@@ -1,535 +1,218 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useUser } from '../../context/useUser'
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '../../context/useUser';
+import { getUserProfile, updateUserProfile } from '../../services/api';
 
 export default function MiPerfil() {
-  const navigate = useNavigate()
-  const { user } = useUser()
+  const navigate = useNavigate();
+  const { user, token } = useUser();
 
-  // Estados para controlar los modales
-  const [showNewServiceModal, setShowNewServiceModal] = useState(false)
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(false)
+  // ==========================================
+  // ESTADOS DE LA API Y CARGA
+  // ==========================================
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  // Estado del Modo Vacaciones
-  const [isVacation, setIsVacation] = useState(false)
+  // Estados para modales
+  const [showNewServiceModal, setShowNewServiceModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [isVacation, setIsVacation] = useState(false);
 
-  // Estado para los datos del perfil del usuario (con campo de habilidades como string para el input)
-  const [userProfile, setUserProfile] = useState(() => {
-    const name = user?.nombres || user?.name || 'Usuario ConectaPo'
-    return {
-      name,
-      title: user?.rol === 'PROFESIONAL' ? 'Profesional ConectaPo' : 'Cliente ConectaPo',
-      location: 'Chile',
-      email: user?.email || '',
-      phone: user?.telefono || 'Sin teléfono registrado',
-      experience: 'Aún sin información',
-      bio: 'Completa tu perfil para que otros usuarios conozcan mejor tus servicios.',
-      avatar: user?.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(name)}`,
-      skills: 'Aún no registradas'
-    }
-  })
+  // Estado principal del perfil
+  const [userProfile, setUserProfile] = useState({});
+  const [editForm, setEditForm] = useState({});
 
-  // Estado temporal para el formulario de edición de perfil
-  const [editForm, setEditForm] = useState(userProfile)
+  // ==========================================
+  // EFECTO DE CARGA INICIAL (GET)
+  // ==========================================
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        const dbData = await getUserProfile(token);
 
-  // Estado para los datos de inicio de sesión (si se llega a usar desde los modales)
-  const [loginData, setLoginData] = useState({ email: '', password: '' })
-  
-  // Estado para la lista de servicios (con propiedad 'status' para pausar/eliminar)
-  const [services, setServices] = useState([
-    { 
-      id: 1, 
-      title: 'Instalación de Grifería y Sanitarios', 
-      price: '$25.000', 
-      cat: 'Gasfitería', 
-      desc: 'Servicio profesional garantizado en zona oriente.',
-      image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop',
-      status: 'activo'
-    },
-    { 
-      id: 2, 
-      title: 'Detección y Reparación de Fugas', 
-      price: '$40.000', 
-      cat: 'Urgencias', 
-      desc: 'Equipo especializado para ubicar fugas ocultas.',
-      image: 'https://images.unsplash.com/photo-1542013936693-893e3d6e1c2b?w=400&h=300&fit=crop',
-      status: 'activo'
-    }
-  ])
+        const profileData = {
+          nombres: dbData.nombres || '',
+          primer_apellido: dbData.primer_apellido || '',
+          segundo_apellido: dbData.segundo_apellido || '',
+          email: dbData.email || '',
+          telefono: dbData.telefono || '',
+          genero: dbData.genero || '',
+          instagram_url: dbData.instagram_url || '',
+          facebook_url: dbData.facebook_url || '',
+          avatar: dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`,
+          rol: dbData.rol,
 
-  // Estado para el formulario de nuevo servicio
-  const [newService, setNewService] = useState({ 
-    title: '', 
-    price: '', 
-    cat: 'Gasfitería', 
-    desc: '', 
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop' 
-  })
+          // Campos FALSOS (Deuda técnica visual)
+          title: dbData.rol === 'PROFESIONAL' ? 'Profesional ConectaPo' : 'Cliente ConectaPo',
+          location: 'Chile (Requiere tabla comunas)',
+          experience: 'Aún sin información',
+          bio: 'Completa tu perfil para que otros conozcan tus servicios.',
+          skills: 'Aún no registradas'
+        };
 
-  // Funciones de subida de imágenes
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setNewService({ ...newService, image: imageUrl })
-    }
-  }
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setEditForm({ ...editForm, avatar: imageUrl })
-    }
-  }
-
-  const handleCreateService = (e) => {
-    e.preventDefault()
-    if (!newService.title || !newService.price) return
-
-    setServices([...services, { id: Date.now(), ...newService, status: 'activo' }])
-    setNewService({ title: '', price: '', cat: 'Gasfitería', desc: '', image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop' })
-    setShowNewServiceModal(false)
-  }
-
-  // Guardar los cambios del perfil
-  const handleSaveProfile = (e) => {
-    e.preventDefault()
-    setUserProfile(editForm)
-    setShowEditProfileModal(false)
-  }
-
-  const handleLoginSubmit = (e) => {
-    e.preventDefault()
-    setShowLoginModal(false)
-  }
-
-  // Pausar o activar servicio
-  const toggleServiceStatus = (id) => {
-    setServices(services.map(s => {
-      if (s.id === id) {
-        return { ...s, status: s.status === 'activo' ? 'pausado' : 'activo' }
+        setUserProfile(profileData);
+        setEditForm(profileData);
+      } catch (error) {
+        console.error("Error cargando perfil:", error);
+      } finally {
+        setIsLoading(false);
       }
-      return s
-    }))
-  }
+    };
 
-  // Eliminar servicio
-  const deleteService = (id) => {
-    setServices(services.filter(s => s.id !== id))
+    if (token) fetchProfile();
+  }, [token]);
+
+  // ==========================================
+  // GUARDAR CAMBIOS (PUT)
+  // ==========================================
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setErrorMsg(null);
+
+    try {
+      // 1. Payload limpio: Solo enviamos lo que sí es editable y existe
+      const payload = {
+        telefono: editForm.telefono,
+        genero: editForm.genero,
+        instagram_url: editForm.instagram_url,
+        facebook_url: editForm.facebook_url,
+        avatar_url: editForm.avatar
+      };
+
+      // 2. Disparamos la petición
+      await updateUserProfile(payload, token);
+
+      // 3. Actualizamos la vista visualmente
+      setUserProfile((prev) => ({
+        ...prev,
+        ...editForm,
+      }));
+
+      setShowEditProfileModal(false);
+    } catch (error) {
+      setErrorMsg(error.message || 'Error al actualizar el perfil.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Helper para el nombre completo concatenado
+  const fullName = `${userProfile.nombres || ''} ${userProfile.primer_apellido || ''} ${userProfile.segundo_apellido || ''}`.trim();
+
+  // Mock de servicios
+  const [services, setServices] = useState([
+    { id: 1, title: 'Instalación de Grifería', price: '$25.000', cat: 'Gasfitería', desc: 'Servicio garantizado.', image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop', status: 'activo' }
+  ]);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Cargando tu perfil desde el servidor...</div>;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-
       {/* BANNER SUPERIOR */}
-      <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }}>
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-      </div>
+      <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }} />
 
-      {/* CONTENEDOR PRINCIPAL */}
       <div className="max-w-5xl mx-auto px-6">
-        
-        {/* Cabecera del perfil */}
+        {/* CABECERA */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 mb-8 relative z-10">
           <div className="flex items-end gap-5">
-            <div className="relative">
-              <img src={userProfile.avatar} alt={userProfile.name} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center border-2 border-white shadow-md bg-orange-500 text-white">
-                ⚡
-              </div>
-            </div>
+            <img src={userProfile.avatar} alt={fullName} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
             <div className="pb-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>{userProfile.name}</h1>
-              </div>
+              <h1 className="text-2xl font-bold text-slate-900">{fullName}</h1>
               <p className="text-slate-500 text-sm">{userProfile.title} · {userProfile.location}</p>
             </div>
           </div>
-
-          <button 
-            onClick={() => {
-              setEditForm(userProfile)
-              setShowEditProfileModal(true)
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:shadow-md transition-all self-start sm:self-auto cursor-pointer"
-          >
-            <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
+          <button onClick={() => { setEditForm(userProfile); setShowEditProfileModal(true); }} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white hover:bg-slate-50 cursor-pointer shadow-sm">
             Editar perfil
           </button>
         </div>
 
-        {/* CONTENEDOR DE DOS COLUMNAS */}
+        {/* COLUMNA IZQUIERDA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Columna Izquierda */}
           <div className="lg:col-span-1 space-y-6">
-            
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-3">
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">Herramientas de usuario</h3>
-              
-              <button onClick={() => navigate('/panel/calendario')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all text-sm font-semibold text-left cursor-pointer">
-                <span className="text-xl">📅</span>
-                <div>
-                  <div>Mi Calendario</div>
-                  <div className="text-xs text-blue-500 font-normal">Gestionar disponibilidad</div>
-                </div>
-              </button>
-
-              <button onClick={() => navigate('/panel/tickets')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-orange-50 text-orange-700 hover:bg-orange-100 transition-all text-sm font-semibold text-left cursor-pointer">
-                <span className="text-xl">🎫</span>
-                <div>
-                  <div>Soporte / Tickets</div>
-                  <div className="text-xs text-orange-500 font-normal">Crear nuevo ticket</div>
-                </div>
-              </button>
-
-              <div className="pt-2 border-t border-slate-100 mt-2">
-                <div className="flex items-center justify-between p-2">
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Modo Vacaciones</p>
-                    <p className="text-[11px] text-slate-500">Ocultar servicios temporalmente</p>
-                  </div>
-                  <button onClick={() => setIsVacation(!isVacation)} className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${isVacation ? 'bg-orange-500' : 'bg-slate-300'}`}>
-                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isVacation ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-                {isVacation && (
-                  <p className="text-[11px] text-orange-600 bg-orange-50 p-2 rounded-lg font-medium mt-1">
-                    ⚠️ Tus servicios están pausados por vacaciones.
-                  </p>
-                )}
-              </div>
-            </div>
-
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-4">Información de contacto</h3>
-              <div className="space-y-3">
-                {[
-                  ['📧', userProfile.email], 
-                  ['📞', userProfile.phone], 
-                  ['📍', userProfile.location], 
-                  ['🏗️', userProfile.experience]
-                ].map(([icon, val]) => (
-                  <div key={val} className="flex items-center gap-3 text-sm text-slate-600">
-                    <span className="text-base">{icon}</span>
-                    <span className="truncate">{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">Habilidades</h3>
-              <div className="flex flex-wrap gap-2">
-                {userProfile.skills.split(',').map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700">
-                    {skill.trim()}
-                  </span>
-                ))}
+              <div className="space-y-3 text-sm text-slate-600">
+                <div className="flex items-center gap-3"><span>📧</span> <span className="truncate">{userProfile.email}</span></div>
+                <div className="flex items-center gap-3"><span>📞</span> {userProfile.telefono || 'Sin teléfono'}</div>
+                <div className="flex items-center gap-3"><span>👤</span> Género: {userProfile.genero === 'M' ? 'Masculino' : userProfile.genero === 'F' ? 'Femenino' : userProfile.genero === 'O' ? 'Otro' : 'No especificado'}</div>
+                {userProfile.instagram_url && <div className="flex items-center gap-3"><span>📸</span> <a href={userProfile.instagram_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Instagram</a></div>}
+                {userProfile.facebook_url && <div className="flex items-center gap-3"><span>📘</span> <a href={userProfile.facebook_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Facebook</a></div>}
               </div>
             </div>
           </div>
 
-          {/* Columna Derecha */}
+          {/* COLUMNA DERECHA */}
           <div className="lg:col-span-2 space-y-6">
-            
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                {userProfile.bio}
-              </p>
+              <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción (Demo)</h3>
+              <p className="text-slate-600 text-sm leading-relaxed">{userProfile.bio}</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
-                  <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
-                </div>
-                <button 
-                  onClick={() => setShowNewServiceModal(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
-                  style={{ background: '#F97316' }}
-                >
-                  <span>+</span> Crear servicio
-                </button>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4 pt-2">
-                {services.map(pub => (
-                  <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
-                    <div className="h-36 w-full overflow-hidden relative bg-slate-100">
-                      <img src={pub.image} alt={pub.title} className="w-full h-full object-cover" />
-                      <span className="absolute top-2 left-2 text-[10px] font-bold text-white bg-slate-900/70 backdrop-blur-sm px-2 py-0.5 rounded-md">{pub.cat}</span>
-                      <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md ${pub.status === 'activo' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-                        {pub.status}
-                      </span>
-                    </div>
-                    <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.title}</h4>
-                          <span className="text-xs font-extrabold text-orange-600">{pub.price}</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-2">{pub.desc}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-              <div>
-                <h3 className="font-semibold text-slate-900 text-sm">Administrar publicaciones</h3>
-                <p className="text-xs text-slate-500">Pausa temporalmente o elimina tus servicios publicados.</p>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                {services.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-3 text-center">No tienes publicaciones activas.</p>
-                ) : (
-                  services.map(s => (
-                    <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50">
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">{s.title}</p>
-                        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${s.status === 'activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {s.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => toggleServiceStatus(s.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition-all cursor-pointer">
-                          {s.status === 'activo' ? 'Pausar' : 'Activar'}
-                        </button>
-                        <button onClick={() => deleteService(s.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-all cursor-pointer">
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
+            {/* Aquí iría la sección de servicios/publicaciones mockeadas */}
           </div>
         </div>
       </div>
 
-      {/* ================= MODALES ================= */}
-
-      {/* 1. MODAL PARA EDITAR PERFIL */}
+      {/* MODAL DE EDICIÓN */}
       {showEditProfileModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="font-bold text-slate-900 text-base" style={{ fontFamily: 'Plus Jakarta Sans' }}>Editar Información del Perfil</h3>
-              <button onClick={() => setShowEditProfileModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all font-bold text-xs cursor-pointer">✕</button>
-            </div>
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h3 className="font-bold text-slate-900 mb-4 border-b pb-2">Editar Información del Perfil</h3>
+
+            {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{errorMsg}</div>}
 
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2">Foto de perfil</label>
-                <div className="flex items-center gap-4">
-                  <img src={editForm.avatar} alt="Avatar preview" className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
-                  />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* CAMPOS BLOQUEADOS (Nombre y Correo) */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre completo (Verificado)</label>
+                  <input type="text" value={fullName} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico (Verificado)</label>
+                  <input type="email" value={editForm.email} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre completo</label>
-                  <input 
-                    type="text" 
-                    value={editForm.name}
-                    onChange={e => setEditForm({...editForm, name: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Título u oficio</label>
-                  <input 
-                    type="text" 
-                    value={editForm.title}
-                    onChange={e => setEditForm({...editForm, title: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico</label>
-                  <input 
-                    type="email" 
-                    value={editForm.email}
-                    onChange={e => setEditForm({...editForm, email: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono</label>
-                  <input 
-                    type="text" 
-                    value={editForm.phone}
-                    onChange={e => setEditForm({...editForm, phone: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Ubicación / Comuna</label>
-                  <input 
-                    type="text" 
-                    value={editForm.location}
-                    onChange={e => setEditForm({...editForm, location: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
+                  <input type="text" value={editForm.telefono} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Años de experiencia</label>
-                  <input 
-                    type="text" 
-                    value={editForm.experience}
-                    onChange={e => setEditForm({...editForm, experience: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Habilidades (separadas por comas)</label>
-                <input 
-                  type="text" 
-                  value={editForm.skills}
-                  onChange={e => setEditForm({...editForm, skills: e.target.value})}
-                  placeholder="Ej: Gasfitería, Plomería, Calefont"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Biografía / Descripción</label>
-                <textarea 
-                  rows={4} 
-                  value={editForm.bio}
-                  onChange={e => setEditForm({...editForm, bio: e.target.value})}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 resize-none"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md cursor-pointer" style={{ background: '#F97316' }}>
-                  Guardar cambios
-                </button>
-                <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-5 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 2. MODAL PARA CREAR NUEVO SERVICIO */}
-      {showNewServiceModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="font-bold text-slate-900 text-base" style={{ fontFamily: 'Plus Jakarta Sans' }}>Nuevo Servicio / Publicación</h3>
-              <button onClick={() => setShowNewServiceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all font-bold text-xs cursor-pointer">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateService} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Título del servicio</label>
-                <input 
-                  type="text" 
-                  placeholder="Ej. Reparación de calefont"
-                  value={newService.title}
-                  onChange={e => setNewService({...newService, title: e.target.value})}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Precio aproximado</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ej. $30.000"
-                    value={newService.price}
-                    onChange={e => setNewService({...newService, price: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Categoría</label>
-                  <select 
-                    value={newService.cat}
-                    onChange={e => setNewService({...newService, cat: e.target.value})}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white"
-                  >
-                    <option value="Gasfitería">Gasfitería</option>
-                    <option value="Urgencias">Urgencias</option>
-                    <option value="Instalaciones">Instalaciones</option>
-                    <option value="Mantención">Mantención</option>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Género</label>
+                  <select value={editForm.genero} onChange={e => setEditForm({ ...editForm, genero: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all bg-white">
+                    <option value="">Prefiero no decirlo</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                    <option value="O">Otro</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Subir foto del servicio</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
-                />
-              </div>
-
-              {newService.image && (
-                <div className="relative h-28 w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                  <img src={newService.image} alt="Vista previa" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-1 right-1 bg-slate-900/70 text-white text-[10px] px-2 py-0.5 rounded">Vista previa</span>
+              {/* REDES SOCIALES */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Instagram (URL)</label>
+                  <input type="url" value={editForm.instagram_url} onChange={e => setEditForm({ ...editForm, instagram_url: e.target.value })} placeholder="https://instagram.com/..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all" />
                 </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción breve</label>
-                <textarea 
-                  rows={3} 
-                  placeholder="Detalla qué incluye tu servicio..."
-                  value={newService.desc}
-                  onChange={e => setNewService({...newService, desc: e.target.value})}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 resize-none"
-                />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Facebook (URL)</label>
+                  <input type="url" value={editForm.facebook_url} onChange={e => setEditForm({ ...editForm, facebook_url: e.target.value })} placeholder="https://facebook.com/..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all" />
+                </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md cursor-pointer" style={{ background: '#F97316' }}>
-                  Publicar servicio
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold transition-all hover:opacity-95 shadow-md disabled:opacity-70 disabled:cursor-not-allowed" style={{ background: '#F97316' }}>
+                  {isSaving ? 'Guardando en la BD...' : 'Guardar cambios'}
                 </button>
-                <button type="button" onClick={() => setShowNewServiceModal(false)} className="px-5 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
+                <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
                   Cancelar
                 </button>
               </div>
@@ -537,57 +220,6 @@ export default function MiPerfil() {
           </div>
         </div>
       )}
-
-      {/* 3. MODAL PARA INICIAR SESIÓN */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base" style={{ fontFamily: 'Plus Jakarta Sans' }}>Iniciar Sesión</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Ingresa a tu cuenta para continuar</p>
-              </div>
-              <button onClick={() => setShowLoginModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all font-bold text-xs cursor-pointer">✕</button>
-            </div>
-
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico</label>
-                <input 
-                  type="email" 
-                  placeholder="ejemplo@correo.com"
-                  value={loginData.email}
-                  onChange={e => setLoginData({...loginData, email: e.target.value})}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Contraseña</label>
-                <input 
-                  type="password" 
-                  placeholder="••••••••"
-                  value={loginData.password}
-                  onChange={e => setLoginData({...loginData, password: e.target.value})}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md cursor-pointer" style={{ background: '#F97316' }}>
-                  Entrar
-                </button>
-                <button type="button" onClick={() => setShowLoginModal(false)} className="px-5 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
     </div>
-  )
+  );
 }
