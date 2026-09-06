@@ -15,7 +15,7 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     throw new ApiError(
-      data?.mensaje || data?.message || 'No fue posible completar la solicitud.',
+      data?.error || data?.mensaje || data?.message || 'No fue posible completar la solicitud.',
       response.status,
     )
   }
