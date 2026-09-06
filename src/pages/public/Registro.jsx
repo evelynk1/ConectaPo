@@ -88,15 +88,8 @@ export default function Registro() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">RUT</label>
-              <input value={form.rut} onChange={e => setForm({ ...form, rut: e.target.value })}
-                required placeholder="12.345.678-9"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
-            </div>
-
-            <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Correo electrónico</label>
-              <input value={form.correo} onChange={e => setForm({ ...form, correo: e.target.value })}
+              <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
                 required
                 type="email" placeholder="juan@ejemplo.cl"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
@@ -113,38 +106,12 @@ export default function Registro() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tipo de cuenta</label>
-                <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
-                  <option value="CLIENTE">Cliente</option>
-                  <option value="PROFESIONAL">Profesional</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ID comuna</label>
-                <input value={form.comuna_id} onChange={e => setForm({ ...form, comuna_id: e.target.value })}
-                  required min="1" type="number" placeholder="Ej. 15"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
-              </div>
-            </div>
-
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Contraseña</label>
               <input value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
                 required minLength={8}
                 type="password" placeholder="Mínimo 8 caracteres"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tipo de cuenta</label>
-              <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
-                <option value="CLIENTE">Cliente</option>
-                <option value="PROFESIONAL">Profesional</option>
-              </select>
             </div>
 
             <label className="flex items-start gap-3 cursor-pointer">
