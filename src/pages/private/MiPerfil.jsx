@@ -16,7 +16,6 @@ export default function MiPerfil() {
 
   // Estado del Modo Vacaciones
   const [isVacation, setIsVacation] = useState(false)
-
   // Estado para los datos del perfil del usuario (con campo de habilidades como string para el input)
   const [userProfile, setUserProfile] = useState({
     name: 'Carlos Mendoza',
