@@ -69,7 +69,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats
       <div className="bg-white border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
           {[['2.400+', 'Profesionales'], ['15.000+', 'Trabajos realizados'], ['98%', 'Clientes satisfechos'], ['50+', 'Comunas cubiertas']].map(([n, l]) => (
@@ -79,7 +79,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Categorias */}
       <section className="max-w-6xl mx-auto px-4 py-16">
