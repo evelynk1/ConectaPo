@@ -5,11 +5,15 @@ import jwt from 'jsonwebtoken';
 
 export const registrarUsuario = async (req, res) => {
   try {
-
-    const { rut, nombres, primer_apellido, email, telefono, password } = req.body;
+    // 1. Recibimos los datos que envía el frontend
+    const { rut, nombres, primer_apellido, email, telefono, password, rol = 'CLIENTE', comuna_id = null } = req.body;
 
     if (!rut || !nombres || !primer_apellido || !email || !password) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
+
+    if (!['CLIENTE', 'PROFESIONAL'].includes(rol)) {
+      return res.status(400).json({ error: 'El rol debe ser CLIENTE o PROFESIONAL.' });
     }
 
     // ==========================================
@@ -38,10 +42,10 @@ export const registrarUsuario = async (req, res) => {
 
     const nuevoUsuario = await pool.query(
       `INSERT INTO auth.usuarios 
-      (rut, nombres, primer_apellido, email, telefono, password_hash) 
-      VALUES ($1, $2, $3, $4, $5, $6) 
+      (rut, nombres, primer_apellido, email, telefono, password_hash, rol, comuna_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id, nombres, email, rol`,
-      [rut, nombres, primer_apellido, email, telefono, passwordHash]
+      [rut, nombres, primer_apellido, email, telefono, passwordHash, rol, comuna_id]
     );
 
     res.status(201).json({
@@ -201,7 +205,6 @@ export const actualizarPerfil = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
-
 export const desactivarUsuario = async (req, res) => {
   try {
     // 1. Obtenemos el ID del usuario desde los parámetros de la ruta

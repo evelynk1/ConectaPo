@@ -2,10 +2,12 @@ import { pool } from '../config/db.js';
 
 export const crearTicket = async (req, res) => {
     try {
-        const { asunto, descripcion } = req.body;
+        const { asunto, descripcion, tipo_ticket_id, mensaje } = req.body;
         const usuario_id = req.usuario.id; // Viene del token gracias al middleware verificarToken
+        const asuntoFinal = asunto || (tipo_ticket_id ? `Ticket tipo ${tipo_ticket_id}` : null);
+        const descripcionFinal = descripcion || mensaje;
 
-        if (!asunto || !descripcion) {
+        if (!asuntoFinal || !descripcionFinal) {
             return res.status(400).json({ error: 'El asunto y la descripción son obligatorios para el ticket.' });
         }
 
@@ -15,11 +17,12 @@ export const crearTicket = async (req, res) => {
             RETURNING *;
         `;
 
-        const { rows } = await pool.query(query, [usuario_id, asunto, descripcion]);
+        const { rows } = await pool.query(query, [usuario_id, asuntoFinal, descripcionFinal]);
 
         res.status(201).json({
             mensaje: '¡Ticket de soporte creado exitosamente!',
-            ticket: rows[0]
+            ticket: rows[0],
+            ticket_id: rows[0].id
         });
 
     } catch (error) {

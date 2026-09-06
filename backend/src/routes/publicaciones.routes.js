@@ -4,7 +4,10 @@ import {
     obtenerPublicaciones,
     actualizarPublicacion,
     subirFotosPublicacion,
-    eliminarPublicacion
+    eliminarPublicacion,
+    obtenerPublicacion,
+    obtenerMisPublicaciones,
+    registrarVista
 } from '../controllers/publicaciones.controller.js';
 import { verificarToken, autorizarRoles } from '../middlewares/auth.middleware.js';
 import { upload } from '../middlewares/upload.middleware.js';
@@ -13,12 +16,15 @@ const router = Router();
 
 // Ruta pública para listar todas las publicaciones activas (SELECT)
 router.get('/', obtenerPublicaciones);
+router.get('/mis-publicaciones', verificarToken, autorizarRoles('PROFESIONAL'), obtenerMisPublicaciones);
+router.get('/:id', obtenerPublicacion);
+router.patch('/:id/vistas', registrarVista);
 
 // Ruta protegida: Solo usuarios con rol CLIENTE pueden publicar
-router.post('/', verificarToken, autorizarRoles('CLIENTE'), crearPublicacion);
+router.post('/', verificarToken, autorizarRoles('PROFESIONAL'), crearPublicacion);
 
 // Ruta protegida para actualizar una publicación por su ID (UPDATE)
-router.put('/:id', verificarToken, actualizarPublicacion);
+router.put('/:id', verificarToken, autorizarRoles('PROFESIONAL'), actualizarPublicacion);
 
 // Ruta protegida para eliminar una publicación por su ID (DELETE)
 router.delete('/:id', verificarToken, eliminarPublicacion);

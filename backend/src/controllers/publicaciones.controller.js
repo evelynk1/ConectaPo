@@ -4,6 +4,7 @@ import { pool } from '../config/db.js';
 // CREAR PUBLICACIÓN CON HABILIDADES
 // ==========================================
 export const crearPublicacion = async (req, res) => {
+    const client = await pool.connect();
     try {
         const {
             titulo,
@@ -26,6 +27,8 @@ export const crearPublicacion = async (req, res) => {
             return res.status(400).json({ error: 'El título, descripción y precio_base son obligatorios.' });
         }
 
+        await client.query('BEGIN');
+
         // 1. Insertamos la publicación
         const query = `
           INSERT INTO negocio.publicaciones (
@@ -45,18 +48,20 @@ export const crearPublicacion = async (req, res) => {
             foto_url_1 || null, foto_url_2 || null, foto_url_3 || null
         ];
 
-        const { rows } = await pool.query(query, values);
+        const { rows } = await client.query(query, values);
         const nuevaPublicacion = rows[0];
 
         // 2. Si vienen habilidades, en la tabla intermedia
         if (habilidades && Array.isArray(habilidades) && habilidades.length > 0) {
             for (const habilidad_id of habilidades) {
-                await pool.query(
+                await client.query(
                     `INSERT INTO negocio.publicaciones_habilidades (publicacion_id, habilidad_id) VALUES ($1, $2)`,
                     [nuevaPublicacion.id, habilidad_id]
                 );
             }
         }
+
+        await client.query('COMMIT');
 
         res.status(201).json({
             mensaje: '¡Publicación completa creada exitosamente!',
@@ -65,8 +70,11 @@ export const crearPublicacion = async (req, res) => {
         });
 
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('❌ Error al crear publicación:', error);
         res.status(500).json({ error: 'Error interno del servidor al crear la publicación.' });
+    } finally {
+        client.release();
     }
 };
 
@@ -263,5 +271,52 @@ export const subirFotosPublicacion = async (req, res) => {
     } catch (error) {
         console.error('❌ Error al subir fotos de publicación:', error);
         res.status(500).json({ error: 'Error interno al guardar las fotos.' });
+    }
+};
+
+export const obtenerPublicacion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { rows } = await pool.query(`
+            SELECT p.*, o.nombre AS oficio_nombre, u.nombres AS usuario_nombre,
+                   u.primer_apellido AS usuario_apellido, u.telefono AS usuario_telefono
+            FROM negocio.publicaciones p
+            JOIN negocio.oficios o ON o.id = p.oficio_id
+            JOIN auth.usuarios u ON u.id = p.usuario_id
+            WHERE p.id = $1 AND p.estado = 'ACTIVA'`, [id]);
+
+        if (!rows.length) return res.status(404).json({ error: 'Publicación no encontrada.' });
+        res.json({ publicacion: rows[0] });
+    } catch (error) {
+        console.error('❌ Error al obtener publicación:', error);
+        res.status(500).json({ error: 'Error interno al consultar la publicación.' });
+    }
+};
+
+export const obtenerMisPublicaciones = async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            'SELECT * FROM negocio.publicaciones WHERE usuario_id = $1 ORDER BY created_at DESC',
+            [req.usuario.id],
+        );
+        res.json({ total: rows.length, publicaciones: rows });
+    } catch (error) {
+        console.error('❌ Error al obtener publicaciones del profesional:', error);
+        res.status(500).json({ error: 'Error interno al consultar las publicaciones.' });
+    }
+};
+
+export const registrarVista = async (req, res) => {
+    try {
+        const { rows } = await pool.query(`
+            UPDATE negocio.publicaciones
+            SET contador_vistas = contador_vistas + 1
+            WHERE id = $1 AND estado = 'ACTIVA'
+            RETURNING contador_vistas`, [req.params.id]);
+        if (!rows.length) return res.status(404).json({ error: 'Publicación no encontrada.' });
+        res.json({ mensaje: 'Vista registrada.', contador_vistas: rows[0].contador_vistas });
+    } catch (error) {
+        console.error('❌ Error al registrar vista:', error);
+        res.status(500).json({ error: 'Error interno al registrar la vista.' });
     }
 };

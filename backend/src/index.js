@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-import { pool } from './config/db.js';
 
 // ==========================================
 // IMPORTACIÓN DE RUTAS
@@ -18,8 +17,22 @@ import evaluacionesRoutes from './routes/evaluaciones.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    // Las peticiones sin Origin (health checks, curl o tráfico servidor a servidor)
+    // no necesitan validación CORS.
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Origen no permitido por CORS.'));
+  },
+}));
 app.use(express.json());
 
 // ==========================================
@@ -35,22 +48,24 @@ app.use('/api/habilidades', habilidadesRoutes);
 app.use('/api/horarios', horariosRoutes);
 app.use('/api/evaluaciones', evaluacionesRoutes);
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({ mensaje: '¡Servidor de ConectaPo funcionando al 100%!' });
 });
 
-
-// ==========================================
-// ATRAPADOR DE ERRORES GLOBAL
-// ==========================================
-app.use((err, req, res, next) => {
-  console.error('🔥 ERROR CAPTURADO POR EXPRESS:', err);
-  res.status(500).json({
-    error: 'Algo reventó antes de llegar al controlador',
-    detalle: err.message || err
-  });
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada.' });
+});
+
+app.use((error, req, res, _next) => {
+  void _next;
+  console.error('❌ Error no controlado:', error);
+  res.status(500).json({ error: 'Error interno del servidor.' });
 });

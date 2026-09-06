@@ -16,7 +16,7 @@ router.get('/', verificarToken, autorizarRoles('ADMIN'), obtenerTickets);
 router.post('/', verificarToken, crearTicket);
 
 // Actualizar un ticket (Por ejemplo, cambiar estado o descripción)
-router.put('/:id', verificarToken, actualizarTicket);
+router.put('/:id', verificarToken, autorizarRoles('ADMIN'), actualizarTicket);
 
 // Eliminar un ticket
 router.delete('/:id', verificarToken, eliminarTicket);
