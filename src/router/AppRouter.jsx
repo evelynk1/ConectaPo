@@ -28,7 +28,7 @@ import ResolucionTickets from '../pages/admin/ResolucionTickets';
 import NotFound404 from '../pages/error/NotFound404';
 
 // Componente para proteger rutas según el rol
-const ProtectedRoute = ({ children, allowedRole }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, token } = useUser();
 
     // Si no hay usuario o token, no está autenticado
@@ -37,7 +37,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     }
 
     // Si la ruta requiere un rol y el usuario no lo tiene
-    if (allowedRole && user.rol !== allowedRole) {
+    if (allowedRoles && !allowedRoles.includes(user.rol)) {
         return <Navigate to="/" replace />;
     }
 
@@ -65,7 +65,7 @@ export default function AppRouter() {
                 <Route
                     path="/panel"
                     element={
-                        <ProtectedRoute allowedRole="USUARIO">
+                        <ProtectedRoute allowedRoles={['CLIENTE', 'PROFESIONAL']}>
                             <PrivateLayout />
                         </ProtectedRoute>
                     }
@@ -81,7 +81,7 @@ export default function AppRouter() {
                 <Route
                     path="/admin"
                     element={
-                        <ProtectedRoute allowedRole="ADMIN">
+                        <ProtectedRoute allowedRoles={['ADMIN']}>
                             <AdminLayout />
                         </ProtectedRoute>
                     }

@@ -34,8 +34,7 @@ export function normalizeUser(user = {}) {
   return {
     ...user,
     name: name || user.email || 'Usuario',
-    // La interfaz actual sólo diferencia administración del resto de usuarios.
-    rol: role === 'ADMIN' ? 'ADMIN' : 'USUARIO',
+    rol: ['ADMIN', 'CLIENTE', 'PROFESIONAL'].includes(role) ? role : 'CLIENTE',
     rolOriginal: role,
   }
 }
@@ -83,18 +82,19 @@ export function normalizePublication(publication) {
   }
 }
 
-export function createTicket({ tipo_ticket_id, mensaje }, token) {
+export function createTicket(ticket, token) {
   return request('/api/tickets', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify({ tipo_ticket_id, mensaje }),
+    body: JSON.stringify(ticket),
   })
 }
 
 export function createScheduleBlocks(blocks, token) {
-  return request('/api/bloques-horarios/bulk', {
+  const { publicacion_id, ...schedule } = blocks
+  return request(`/api/horarios/publicacion/${publicacion_id}/masivo`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify(blocks),
+    body: JSON.stringify(schedule),
   })
 }

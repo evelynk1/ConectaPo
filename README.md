@@ -2,6 +2,17 @@
 
 > Marketplace de servicios y oficios en Chile.
 
+## Despliegue en Render
+
+El repositorio incluye `render.yaml`, que crea dos servicios:
+
+- `conectapo-api`: API Express en `backend`, con comprobación en `/health`.
+- `conectapo-web`: sitio estático Vite, con redirección a `index.html` para que las rutas de React funcionen al recargar.
+
+En Render, selecciona **New + > Blueprint** y elige este repositorio. Durante la creación proporciona `DATABASE_URL` y las tres credenciales de Cloudinary (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) para `conectapo-api`; usa la URL de conexión de tu base PostgreSQL/Neon con SSL. Render genera `JWT_SECRET` de forma segura.
+
+Los nombres definidos en el Blueprint determinan las URL públicas `https://conectapo-api.onrender.com` y `https://conectapo-web.onrender.com`, ya configuradas para la API y CORS. Si cambias alguno de esos nombres o conectas un dominio propio, actualiza `VITE_API_URL` y `CORS_ORIGINS` con las URL finales y vuelve a desplegar ambos servicios.
+
 ## Descripción del proyecto
 
 ConectaPo es una aplicación web que busca conectar clientes con profesionales de distintos oficios y servicios de manera simple y gratuita.

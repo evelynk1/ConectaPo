@@ -15,9 +15,7 @@ export default function Login() {
 
     try {
       const { user, token } = await loginUser({ email, password: pass });
-
       login(user, token);
-
       if (user.rol === 'ADMIN') {
         navigate('/admin');
       } else {

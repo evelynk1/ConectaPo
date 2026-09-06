@@ -5,7 +5,7 @@ import { registerUser } from '../../services/api'
 
 export default function Registro() {
   const [terms, setTerms] = useState(false)
-  const [form, setForm] = useState({ nombre: '', rut: '', correo: '', telefono: '', password: '', rol: 'CLIENTE', comuna_id: '' })
+  const [form, setForm] = useState({ nombres: '', primer_apellido: '', rut: '', email: '', telefono: '', password: '', rol: 'CLIENTE' })
   const navigate = useNavigate()
 
   const handleRegister = async (e) => {
@@ -17,20 +17,11 @@ export default function Registro() {
     }
 
     try {
-      await registerUser({
-        nombre: form.nombre,
-        rut: form.rut,
-        email: form.correo,
-        telefono: form.telefono,
-        password: form.password,
-        rol: form.rol,
-        comuna_id: Number(form.comuna_id),
-      })
-
-      alert("¡Registro exitoso! Por favor inicia sesión.");
-      navigate('/login');
+      await registerUser(form)
+      alert('¡Registro exitoso! Ahora puedes iniciar sesión.')
+      navigate('/login')
     } catch (error) {
-      alert(error.message);
+      alert(error.message)
     }
   }
 
@@ -75,10 +66,24 @@ export default function Registro() {
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nombre completo</label>
-              <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })}
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nombres</label>
+              <input value={form.nombres} onChange={e => setForm({ ...form, nombres: e.target.value })}
                 required
-                placeholder="Juan Pérez García"
+                placeholder="Juan Pablo"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Primer apellido</label>
+              <input value={form.primer_apellido} onChange={e => setForm({ ...form, primer_apellido: e.target.value })}
+                required placeholder="Pérez"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">RUT</label>
+              <input value={form.rut} onChange={e => setForm({ ...form, rut: e.target.value })}
+                required placeholder="12.345.678-9"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
             </div>
 
@@ -101,7 +106,7 @@ export default function Registro() {
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Teléfono</label>
               <div className="flex gap-2">
                 <span className="px-3 py-3 rounded-xl border border-slate-200 text-sm text-slate-600 bg-slate-50 shrink-0">+56</span>
-                <input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })}
+              <input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })}
                   required
                   placeholder="9 1234 5678" type="tel"
                   className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
@@ -131,6 +136,15 @@ export default function Registro() {
                 required minLength={8}
                 type="password" placeholder="Mínimo 8 caracteres"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tipo de cuenta</label>
+              <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                <option value="CLIENTE">Cliente</option>
+                <option value="PROFESIONAL">Profesional</option>
+              </select>
             </div>
 
             <label className="flex items-start gap-3 cursor-pointer">

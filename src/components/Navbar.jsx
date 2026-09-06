@@ -64,7 +64,7 @@ export default function Navbar() {
           {/* Si HAY usuario conectado */}
           {user && (
             <>
-              {user.rol === "USUARIO" && (
+              {['CLIENTE', 'PROFESIONAL'].includes(user.rol) && (
                 <Link
                   to="/panel/perfil"
                   className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
@@ -161,7 +161,7 @@ export default function Navbar() {
 
           {user && (
             <>
-              {user.rol === "USUARIO" && (
+              {['CLIENTE', 'PROFESIONAL'].includes(user.rol) && (
                 <Link
                   to="/panel/perfil"
                   onClick={closeMenu}

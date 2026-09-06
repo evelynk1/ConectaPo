@@ -8,7 +8,6 @@ const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 export default function GestionCalendario() {
   const navigate = useNavigate()
   const { token } = useUser()
-
   const [currentMonth] = useState('Agosto 2026')
   const [selectedDate, setSelectedDate] = useState(24)
   const [availabilityStatus, setAvailabilityStatus] = useState('disponible')
