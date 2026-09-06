@@ -29,7 +29,7 @@ function authHeaders(token) {
 
 export function normalizeUser(user = {}) {
   const role = String(user.rol || user.role || '').toUpperCase()
-  const name = user.nombre || user.name || [user.usuario_nombre, user.usuario_apellido].filter(Boolean).join(' ')
+  const name = user.nombres || user.nombre || user.name || [user.usuario_nombre, user.usuario_apellido].filter(Boolean).join(' ')
 
   return {
     ...user,

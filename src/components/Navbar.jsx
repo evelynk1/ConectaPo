@@ -7,6 +7,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const { user, logout } = useUser();
+  const userName = user?.nombres || user?.name || user?.email || 'Usuario';
 
   const navigate = useNavigate();
 
@@ -83,7 +84,7 @@ export default function Navbar() {
               )}
 
               <span className="text-sm font-semibold text-slate-700">
-                {user.name}
+                {userName}
               </span>
 
               <button

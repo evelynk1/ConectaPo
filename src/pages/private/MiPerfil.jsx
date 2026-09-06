@@ -1,13 +1,10 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import ConectaPoLogo from '../../components/Logo'
+import { useNavigate } from 'react-router-dom'
+import { useUser } from '../../context/useUser'
 
 export default function MiPerfil() {
   const navigate = useNavigate()
-  
-  // Estado para el menú móvil del Navbar
-  const [menuOpen, setMenuOpen] = useState(false)
-  const closeMenu = () => setMenuOpen(false)
+  const { user } = useUser()
 
   // Estados para controlar los modales
   const [showNewServiceModal, setShowNewServiceModal] = useState(false)
@@ -18,16 +15,19 @@ export default function MiPerfil() {
   const [isVacation, setIsVacation] = useState(false)
 
   // Estado para los datos del perfil del usuario (con campo de habilidades como string para el input)
-  const [userProfile, setUserProfile] = useState({
-    name: 'Carlos Mendoza',
-    title: 'Gasfitero certificado',
-    location: 'Providencia, Santiago',
-    email: 'carlos.mendoza@gmail.com',
-    phone: '+56 9 8765 4321',
-    experience: '12 años de experiencia',
-    bio: 'Gasfitero certificado con más de 12 años de experiencia en instalaciones residenciales y comerciales. Especialista en detección de fugas, instalación de cañerías y reparación de artefactos sanitarios. Trabajo con garantía y materiales de primera calidad.',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=128&h=128&fit=crop&auto=format',
-    skills: 'Gasfitería, Plomería, Instalaciones, Emergencias, Detección de fugas'
+  const [userProfile, setUserProfile] = useState(() => {
+    const name = user?.nombres || user?.name || 'Usuario ConectaPo'
+    return {
+      name,
+      title: user?.rol === 'PROFESIONAL' ? 'Profesional ConectaPo' : 'Cliente ConectaPo',
+      location: 'Chile',
+      email: user?.email || '',
+      phone: user?.telefono || 'Sin teléfono registrado',
+      experience: 'Aún sin información',
+      bio: 'Completa tu perfil para que otros usuarios conozcan mejor tus servicios.',
+      avatar: user?.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(name)}`,
+      skills: 'Aún no registradas'
+    }
   })
 
   // Estado temporal para el formulario de edición de perfil
@@ -120,67 +120,8 @@ export default function MiPerfil() {
     setServices(services.filter(s => s.id !== id))
   }
 
-  const handleLogout = () => {
-    navigate('/')
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-      
-      {/* NAVBAR SUPERIOR */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" onClick={closeMenu} className="flex items-center cursor-pointer">
-            <ConectaPoLogo height={38} />
-          </Link>
-
-          <div className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Home</Link>
-            <Link to="/galeria#galeria" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Servicios</Link>
-            
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-sm overflow-hidden">
-                <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-slate-900">{userProfile.name}</p>
-                <p className="text-[10px] text-slate-500">Sesión activa</p>
-              </div>
-
-              <button onClick={handleLogout} title="Cerrar sesión" className="ml-2 p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
-          </button>
-        </div>
-
-        {menuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-100 px-4 py-3 flex flex-col gap-2">
-            <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-xl mb-1">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs overflow-hidden">
-                <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-900">{userProfile.name}</p>
-                <p className="text-[10px] text-slate-500">Sesión activa</p>
-              </div>
-            </div>
-            <Link to="/" onClick={closeMenu} className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Home</Link>
-            <Link to="/galeria#galeria" onClick={closeMenu} className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Servicios</Link>
-            <button onClick={() => { closeMenu(); handleLogout(); }} className="text-left px-3 py-2 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer">
-              Cerrar sesión
-            </button>
-          </div>
-        )}
-      </nav>
 
       {/* BANNER SUPERIOR */}
       <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }}>
