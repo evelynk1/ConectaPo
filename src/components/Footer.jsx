@@ -15,9 +15,10 @@ export default function Footer() {
         </p>
 
         <div className="flex gap-4 text-xs">
-          <a href="#" className="hover:text-white transition-colors">Términos</a>
-          <a href="#" className="hover:text-white transition-colors">Privacidad</a>
-          <a href="#" className="hover:text-white transition-colors">Contacto</a>
+          {/* Apuntamos los tres a una ruta que mostrará el error/404 */}
+          <Link to="/404" className="hover:text-white transition-colors">Términos</Link>
+          <Link to="/404" className="hover:text-white transition-colors">Privacidad</Link>
+          <Link to="/404" className="hover:text-white transition-colors">Contacto</Link>
         </div>
       </div>
     </footer>
