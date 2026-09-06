@@ -4,14 +4,7 @@
 
 ## Despliegue en Render
 
-El repositorio incluye `render.yaml`, que crea dos servicios:
-
-- `conectapo-api`: API Express en `backend`, con comprobación en `/health`.
-- `conectapo-web`: sitio estático Vite, con redirección a `index.html` para que las rutas de React funcionen al recargar.
-
-En Render, selecciona **New + > Blueprint** y elige este repositorio. Durante la creación proporciona `DATABASE_URL` y las tres credenciales de Cloudinary (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) para `conectapo-api`; usa la URL de conexión de tu base PostgreSQL/Neon con SSL. Render genera `JWT_SECRET` de forma segura.
-
-Los nombres definidos en el Blueprint determinan las URL públicas `https://conectapo-api.onrender.com` y `https://conectapo-web.onrender.com`, ya configuradas para la API y CORS. Si cambias alguno de esos nombres o conectas un dominio propio, actualiza `VITE_API_URL` y `CORS_ORIGINS` con las URL finales y vuelve a desplegar ambos servicios.
+Esta rama incluye `render.yaml` para desplegar únicamente el sitio estático Vite. Al crear el Blueprint, ingresa `VITE_API_URL` con la URL pública de la API ya desplegada (por ejemplo, `https://tu-api.onrender.com`). La regla de redirección a `index.html` permite recargar las rutas de React sin errores 404.
 
 ## Descripción del proyecto
 
