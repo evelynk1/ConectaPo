@@ -26,7 +26,7 @@ export default function Home() {
   }
 
   return (
-    <div>
+    <div className="min-h-[calc(100vh-4rem)]">
       {/* Hero */}
       <section className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563EB 60%, #3b82f6 100%)' }}>
         <div className="absolute inset-0 opacity-10"
