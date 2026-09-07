@@ -124,7 +124,8 @@ export default function MiPerfil() {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
-      setEditForm({ ...editForm, avatar: URL.createObjectURL(file) }); // Solo para previsualizar
+      // Previsualización local temporal en el formulario
+      setEditForm({ ...editForm, avatar: URL.createObjectURL(file) });
     }
   };
 
@@ -133,27 +134,17 @@ export default function MiPerfil() {
     setIsSaving(true);
     setErrorMsg(null);
     try {
-      // 1. Iniciamos con la foto ORIGINAL que venía de la BD
-      let finalAvatarUrl = userProfile.avatar; 
-
-      // 2. Si el usuario eligió una foto nueva, la subimos
+      // 1. Si el usuario seleccionó un archivo nuevo, lo enviamos a Multer/Cloudinary primero
       if (avatarFile) {
-        const uploadRes = await uploadUserAvatar(avatarFile, token);
-        // Extraemos la URL real del backend (agregamos uploadRes.url por si acaso)
-        finalAvatarUrl = uploadRes.usuario?.avatar_url || uploadRes.avatar_url || uploadRes.url || finalAvatarUrl;
+        await uploadUserAvatar(avatarFile, token);
       }
 
-      // 3. 🛡️ ESCUDO ANTI-BLOB: Si por alguna razón intenta colarse el blob, lo bloqueamos
-      if (finalAvatarUrl && finalAvatarUrl.startsWith('blob:')) {
-        finalAvatarUrl = userProfile.avatar; 
-      }
-
+      // 2. Preparamos el payload con los datos de texto (el avatar ya lo procesó Cloudinary en el paso anterior)
       const payload = {
         telefono: editForm.telefono, 
         genero: editForm.genero,
         instagram_url: editForm.instagram_url, 
         facebook_url: editForm.facebook_url,
-        avatar_url: finalAvatarUrl, // Enviamos la URL limpia y real
         titulo_oficio: editForm.titulo_oficio,
         experiencia: editForm.experiencia, 
         biografia: editForm.biografia
@@ -161,9 +152,12 @@ export default function MiPerfil() {
       
       await updateUserProfile(payload, token);
       
-      // Actualizamos el estado de la vista con la URL limpia
-      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: finalAvatarUrl }));
-      setEditForm((prev) => ({ ...prev, avatar: finalAvatarUrl }));
+      // 3. Volvemos a consultar la BD para traer la URL de Cloudinary limpia y actualizada
+      const dbData = await getUserProfile(token);
+      const avatarUrlReal = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
+
+      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: avatarUrlReal }));
+      setEditForm((prev) => ({ ...prev, avatar: avatarUrlReal }));
       setShowEditProfileModal(false);
       setAvatarFile(null);
     } catch (error) {
