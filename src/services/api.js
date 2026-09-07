@@ -232,3 +232,30 @@ export async function getTickets(token) {
   })
   return Array.isArray(data) ? data : (data.tickets || [])
 }
+
+
+// Traer la lista de oficios desde la base de datos
+export async function obtenerOficios() {
+  const response = await fetch(`${API_URL}/api/oficios`);
+  if (!response.ok) throw new Error('Error al obtener los oficios.');
+  return response.json();
+}
+
+// Actualizar un servicio/publicación existente
+export async function actualizarPublicacionServicio(id, data, token) {
+  const response = await fetch(`${API_URL}/api/publicaciones/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Error al actualizar la publicación.');
+  }
+
+  return response.json();
+}
