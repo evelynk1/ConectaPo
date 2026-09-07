@@ -1,7 +1,7 @@
 import { pool } from '../config/db.js';
 
 // ==========================================
-// CREAR PUBLICACIÓN CON HABILIDADES
+// CREAR PUBLICACIÓN CON VALIDACIÓN DE OFICIO ÚNICO Y HABILIDADES
 // ==========================================
 export const crearPublicacion = async (req, res) => {
     const client = await pool.connect();
@@ -23,26 +23,36 @@ export const crearPublicacion = async (req, res) => {
 
         const usuario_id = req.usuario.id;
 
-        if (!titulo || !descripcion || !precio_base) {
-            return res.status(400).json({ error: 'El título, descripción y precio_base son obligatorios.' });
+        if (!titulo || !descripcion || !precio_base || !oficio_id) {
+            return res.status(400).json({ error: 'El título, descripción, precio base y oficio son obligatorios.' });
+        }
+
+        // 🛡️ REGLA DE NEGOCIO: Evitar que el usuario cree otra publicación activa del mismo oficio
+        const existeOficio = await client.query(
+            `SELECT id FROM negocio.publicaciones WHERE usuario_id = $1 AND oficio_id = $2 AND estado = 'ACTIVA'`,
+            [usuario_id, oficio_id]
+        );
+
+        if (existeOficio.rows.length > 0) {
+            return res.status(400).json({ error: 'Ya tienes una publicación activa para este oficio. Puedes editarla en lugar de crear una nueva.' });
         }
 
         await client.query('BEGIN');
 
-        // 1. Insertamos la publicación
+        // 1. Insertamos la publicación con estado ACTIVA por defecto
         const query = `
           INSERT INTO negocio.publicaciones (
             usuario_id, titulo, descripcion, precio_base, oficio_id, comuna_id, 
             villa_poblacion_id, anos_experiencia, es_horario_conversable, 
-            foto_url_1, foto_url_2, foto_url_3
+            foto_url_1, foto_url_2, foto_url_3, estado
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVA')
           RETURNING *; 
         `;
 
         const values = [
             usuario_id, titulo, descripcion, precio_base,
-            oficio_id || null, comuna_id || null, villa_poblacion_id || null,
+            oficio_id, comuna_id || null, villa_poblacion_id || null,
             anos_experiencia || 0,
             es_horario_conversable !== undefined ? es_horario_conversable : true,
             foto_url_1 || null, foto_url_2 || null, foto_url_3 || null
@@ -78,7 +88,7 @@ export const crearPublicacion = async (req, res) => {
     }
 };
 
-// Obtener publicaciones con SELECT e información relacionada
+// Obtener publicaciones públicas activas
 export const obtenerPublicaciones = async (req, res) => {
     try {
         const query = `
@@ -118,7 +128,7 @@ export const obtenerPublicaciones = async (req, res) => {
     }
 };
 
-// Actualizar publicación con COALESCE para permitir modificaciones parciales
+// Actualizar publicación (incluyendo cambio de estado a PAUSADA o ACTIVA)
 export const actualizarPublicacion = async (req, res) => {
     try {
         const { id } = req.params;
@@ -134,7 +144,8 @@ export const actualizarPublicacion = async (req, res) => {
             es_horario_conversable,
             foto_url_1,
             foto_url_2,
-            foto_url_3
+            foto_url_3,
+            estado
         } = req.body;
 
         const query = `
@@ -149,8 +160,9 @@ export const actualizarPublicacion = async (req, res) => {
                 es_horario_conversable = COALESCE($8, es_horario_conversable),
                 foto_url_1 = COALESCE($9, foto_url_1),
                 foto_url_2 = COALESCE($10, foto_url_2),
-                foto_url_3 = COALESCE($11, foto_url_3)
-            WHERE id = $12 AND usuario_id = $13
+                foto_url_3 = COALESCE($11, foto_url_3),
+                estado = COALESCE($12, estado)
+            WHERE id = $13 AND usuario_id = $14
             RETURNING *;
         `;
 
@@ -166,6 +178,7 @@ export const actualizarPublicacion = async (req, res) => {
             foto_url_1,
             foto_url_2,
             foto_url_3,
+            estado,
             id,
             usuario_id
         ];
@@ -186,19 +199,21 @@ export const actualizarPublicacion = async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor al actualizar la publicación.' });
     }
 };
-// Eliminar publicación (o asegurarte de que solo el dueño pueda borrarla)
+
+// ==========================================
+// ELIMINACIÓN LÓGICA (SOFT DELETE)
+// ==========================================
 export const eliminarPublicacion = async (req, res) => {
     try {
         const { id } = req.params;
         const usuario_id = req.usuario.id;
 
-        // Opcional: Primero puedes borrar las relaciones de la tabla intermedia si no tienes ON DELETE CASCADE en tu BD
-        await pool.query(`DELETE FROM negocio.publicaciones_habilidades WHERE publicacion_id = $1`, [id]);
-
+        // Soft Delete: Cambiamos el estado a 'ELIMINADA' en vez de hacer DELETE
         const query = `
-            DELETE FROM negocio.publicaciones 
+            UPDATE negocio.publicaciones 
+            SET estado = 'ELIMINADA'
             WHERE id = $1 AND usuario_id = $2
-            RETURNING id, titulo;
+            RETURNING id, titulo, estado;
         `;
 
         const { rows } = await pool.query(query, [id, usuario_id]);
@@ -208,7 +223,7 @@ export const eliminarPublicacion = async (req, res) => {
         }
 
         res.status(200).json({
-            mensaje: '¡Publicación eliminada exitosamente!',
+            mensaje: '¡Publicación eliminada lógicamente con éxito!',
             publicacion: rows[0]
         });
 
@@ -218,9 +233,7 @@ export const eliminarPublicacion = async (req, res) => {
     }
 };
 
-// ==========================================
-// SUBIR FOTOS A UNA PUBLICACIÓN
-// ==========================================
+// Subir fotos a una publicación
 export const subirFotosPublicacion = async (req, res) => {
     try {
         const { id } = req.params;
@@ -293,15 +306,16 @@ export const obtenerPublicacion = async (req, res) => {
     }
 };
 
+// Obtener mis publicaciones (excluyendo las que tienen estado 'ELIMINADA')
 export const obtenerMisPublicaciones = async (req, res) => {
     try {
         const { rows } = await pool.query(
-            'SELECT * FROM negocio.publicaciones WHERE usuario_id = $1 ORDER BY created_at DESC',
+            "SELECT * FROM negocio.publicaciones WHERE usuario_id = $1 AND estado != 'ELIMINADA' ORDER BY created_at DESC",
             [req.usuario.id],
         );
         res.json({ total: rows.length, publicaciones: rows });
     } catch (error) {
-        console.error('❌ Error al obtener publicaciones del profesional:', error);
+        console.error('❌ Error al obtener publicaciones del usuario:', error);
         res.status(500).json({ error: 'Error interno al consultar las publicaciones.' });
     }
 };
