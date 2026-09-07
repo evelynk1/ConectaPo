@@ -1,11 +1,39 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { CATEGORIES, SERVICES } from '../../data/services'
 import StarRating from '../../components/StarRating'
+
+const normalizeText = (value) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+
+const categoryTerms = {
+  'Gasfitería': 'gasfiter',
+  Electricidad: 'electric',
+  Carpintería: 'carpinter',
+  Pintura: 'pintor',
+  Aseo: 'aseo',
+  Jardinería: 'jardin',
+}
 
 export default function Galeria() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  // Estados para los filtros de búsqueda, categoría, comuna y ordenamiento
+  const [search, setSearch] = useState('')
+  const [categoria, setCategoria] = useState('')
+  const [comuna, setComuna] = useState('')
+  const [sort, setSort] = useState('rating')
+
+  // Sincronizar estados cada vez que cambien los parámetros de la URL
+  useEffect(() => {
+    setSearch(searchParams.get('q') ?? '')
+    setCategoria(searchParams.get('categoria') ?? '')
+    setComuna(searchParams.get('comuna') ?? '')
+  }, [searchParams])
 
   // Efecto para hacer scroll automático al cargar la vista si viene con hash o ruta de galería
   useEffect(() => {
@@ -19,17 +47,18 @@ export default function Galeria() {
     }
   }, [location])
 
-  // Estados para los filtros de búsqueda, categoría, comuna y ordenamiento
-  const [search, setSearch] = useState('')
-  const [categoria, setCategoria] = useState('')
-  const [comuna, setComuna] = useState('')
-  const [sort, setSort] = useState('rating')
-
   // Lógica para filtrar y ordenar los servicios según los inputs del usuario
   const filteredServices = SERVICES.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
-                          s.trade.toLowerCase().includes(search.toLowerCase())
-    const matchesCategoria = categoria === '' || s.trade === categoria || s.category === categoria
+    const normalizedSearch = normalizeText(search)
+    const normalizedTrade = normalizeText(s.trade)
+    const matchesSearch = normalizeText(s.name).includes(normalizedSearch) ||
+      normalizedTrade.includes(normalizedSearch) ||
+      Object.entries(categoryTerms).some(([label, term]) =>
+        normalizeText(label).includes(normalizedSearch) && normalizedTrade.includes(term)
+      )
+    const matchesCategoria = categoria === '' ||
+      s.category === categoria ||
+      normalizedTrade.includes(categoryTerms[categoria] ?? normalizeText(categoria))
     const matchesComuna = comuna === '' || s.comuna === comuna
     return matchesSearch && matchesCategoria && matchesComuna
   }).sort((a, b) => {
@@ -51,7 +80,7 @@ export default function Galeria() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* BARRA DE FILTROS Y BÚSQUEDA                                        */}
+        {/* BARRA DE FILTROS Y BÚSQUEDA                                         */}
         {/* ------------------------------------------------------------------ */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-6 flex flex-col sm:flex-row gap-3">
           
@@ -103,7 +132,7 @@ export default function Galeria() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* GRILLA DE TARJETAS DE PROFESIONALES                                */}
+        {/* GRILLA DE TARJETAS DE PROFESIONALES                                 */}
         {/* ------------------------------------------------------------------ */}
         {filteredServices.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-slate-100">
