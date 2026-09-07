@@ -93,7 +93,7 @@ export const subirAvatar = async (req, res) => {
 
         return res.status(200).json({
             mensaje: '¡Prueba superada!',
-            url_falsa: req.file.path
+            avatar_url: req.file.path
         });
 
     } catch (error) {
