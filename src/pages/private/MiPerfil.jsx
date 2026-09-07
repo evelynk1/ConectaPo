@@ -378,10 +378,17 @@ export default function MiPerfil() {
       <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }} />
 
       <div className="max-w-5xl mx-auto px-6">
-        {/* Cabecera del Perfil con Avatar y Datos */}
+       {/* Cabecera del Perfil con Avatar y Datos */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 mb-8 relative z-10">
           <div className="flex items-end gap-5">
-            <img src={userProfile.avatar} alt={fullName} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
+            <div className="w-28 h-28 rounded-2xl border-4 border-white shadow-xl bg-white overflow-hidden flex items-center justify-center">
+              <img 
+                src={userProfile.avatar} 
+                alt={fullName} 
+                className="w-full h-full object-cover" 
+                onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=Usuario'; }}
+              />
+            </div>
             <div className="pb-1">
               <h1 className="text-2xl font-bold text-slate-900">{fullName}</h1>
               <p className="text-slate-500 text-sm font-medium text-orange-600">{userProfile.titulo_oficio} · <span className="text-slate-500">{userProfile.location}</span></p>
@@ -391,7 +398,6 @@ export default function MiPerfil() {
             Editar perfil
           </button>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Columna Izquierda: Contacto */}
           <div className="lg:col-span-1 space-y-6">
@@ -437,32 +443,38 @@ export default function MiPerfil() {
                     <p className="text-xs text-slate-400 col-span-2 py-4 text-center">Aún no tienes servicios publicados.</p>
                   ) : (
                     services.map(pub => (
-                      <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
-                        <div className="h-32 w-full overflow-hidden relative bg-slate-100">
-                          <img src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} alt={pub.titulo} className="w-full h-full object-cover" />
-                          <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${pub.estado === 'PAUSADA' ? 'bg-amber-500' : 'bg-emerald-500'}`}>
-                            {pub.estado || 'ACTIVA'}
-                          </span>
-                        </div>
-                        <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
-                              <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
-                            </div>
-                            <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
-                          </div>
-                          
-                          {/* Botones de acción por tarjeta */}
-                          <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
-                            <button onClick={() => openEditModal(pub)} className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer">✏️ Editar</button>
-                            <button onClick={() => toggleServiceStatus(pub)} className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
-                              {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
-                            </button>
-                            <button onClick={() => handleDeleteService(pub.id)} className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer">🗑️ Eliminar</button>
-                          </div>
-                        </div>
-                      </div>
+<div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+  {/* 👇 AQUÍ ESTÁ EL CAMBIO: agregamos flex items-center justify-center al div y el onError a la img */}
+  <div className="h-32 w-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
+    <img 
+      src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} 
+      alt={pub.titulo} 
+      className="w-full h-full object-cover" 
+      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'; }}
+    />
+    <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${pub.estado === 'PAUSADA' ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+      {pub.estado || 'ACTIVA'}
+    </span>
+  </div>
+  <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
+        <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
+      </div>
+      <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
+    </div>
+    
+    {/* Botones de acción por tarjeta */}
+    <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
+      <button onClick={() => openEditModal(pub)} className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer">✏️ Editar</button>
+      <button onClick={() => toggleServiceStatus(pub)} className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
+        {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
+      </button>
+      <button onClick={() => handleDeleteService(pub.id)} className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
                     ))
                   )}
                 </div>
