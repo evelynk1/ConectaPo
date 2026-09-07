@@ -117,14 +117,13 @@ export default function MiPerfil() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // ==========================================
+ // ==========================================
   // LÓGICA DE ACTUALIZACIÓN DE PERFIL
   // ==========================================
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
-      // Solo para que tú lo veas en la pantalla antes de guardar
       setEditForm({ ...editForm, avatar: URL.createObjectURL(file) });
     }
   };
@@ -134,7 +133,13 @@ export default function MiPerfil() {
     setIsSaving(true);
     setErrorMsg(null);
     try {
-      // 1. Enviamos SOLO los datos de texto al backend (Fíjate que quitamos avatar_url de aquí)
+      let urlAvatarReal = userProfile.avatar;
+      if (avatarFile) {
+        console.log("Subiendo avatar a Cloudinary...");
+        const uploadRes = await uploadUserAvatar(avatarFile, token);
+        urlAvatarReal = uploadRes.avatar_url || uploadRes.url || urlAvatarReal;
+      }
+
       const payload = {
         telefono: editForm.telefono, 
         genero: editForm.genero,
@@ -142,24 +147,14 @@ export default function MiPerfil() {
         facebook_url: editForm.facebook_url,
         titulo_oficio: editForm.titulo_oficio,
         experiencia: editForm.experiencia, 
-        biografia: editForm.biografia
+        biografia: editForm.biografia,
+        avatar_url: urlAvatarReal 
       };
+      
       await updateUserProfile(payload, token);
 
-      // 2. Si el usuario subió una foto nueva, dejamos que el endpoint de Multer haga su magia en la BD
-      if (avatarFile) {
-        console.log("Subiendo avatar a Cloudinary...");
-        const uploadRes = await uploadUserAvatar(avatarFile, token);
-        console.log("Respuesta exitosa de la foto:", uploadRes); // <-- Si esto falla, lo veremos en la consola
-      }
-
-      // 3. Forzamos la recarga de datos desde la BD para traer la URL real
-      const dbData = await getUserProfile(token);
-      const avatarUrlReal = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
-
-      // 4. Actualizamos la pantalla con la URL 100% real de la base de datos
-      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: avatarUrlReal }));
-      setEditForm((prev) => ({ ...prev, avatar: avatarUrlReal }));
+      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: urlAvatarReal }));
+      setEditForm((prev) => ({ ...prev, avatar: urlAvatarReal }));
       setShowEditProfileModal(false);
       setAvatarFile(null);
     } catch (error) {
