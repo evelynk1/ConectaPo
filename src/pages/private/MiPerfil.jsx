@@ -47,6 +47,8 @@ export default function MiPerfil() {
         setIsLoading(true);
         const dbData = await getUserProfile(token);
 
+        const avatarUrl = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
+
         const profileData = {
           nombres: dbData.nombres || '',
           primer_apellido: dbData.primer_apellido || '',
@@ -56,9 +58,9 @@ export default function MiPerfil() {
           genero: dbData.genero || '',
           instagram_url: dbData.instagram_url || '',
           facebook_url: dbData.facebook_url || '',
-          avatar: dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`,
+          avatar: avatarUrl,
           rol: dbData.rol,
-          titulo_oficio: dbData.titulo_oficio || (dbData.rol === 'PROFESIONAL' ? 'Profesional' : 'Cliente'),
+          titulo_oficio: dbData.titulo_oficio || 'Profesional independiente',
           experiencia: dbData.experiencia || 'Aún sin información',
           biografia: dbData.biografia || '',
           location: 'Chile',
@@ -68,10 +70,10 @@ export default function MiPerfil() {
         setUserProfile(profileData);
         setEditForm(profileData);
 
-        if (dbData.rol === 'PROFESIONAL') {
-          const pubData = await obtenerMisPublicaciones(token);
-          setServices(pubData.publicaciones || []);
-        }
+        // Cargamos las publicaciones del usuario (sea CLIENTE o PROFESIONAL)
+        const pubData = await obtenerMisPublicaciones(token);
+        setServices(pubData.publicaciones || []);
+
       } catch (error) {
         console.error("Error cargando perfil:", error);
       } finally {
@@ -218,49 +220,48 @@ export default function MiPerfil() {
               <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.biografia || 'Sin descripción aún.'}</p>
             </div>
 
-            {userProfile.rol === 'PROFESIONAL' && (
-              <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
-                    <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
-                  </div>
-                  <button
-                    onClick={() => setShowNewServiceModal(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
-                    style={{ background: '#F97316' }}
-                  >
-                    <span>+</span> Crear servicio
-                  </button>
+            {/* Sección de Servicios habilitada para usuarios autenticados */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
+                  <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
                 </div>
+                <button
+                  onClick={() => setShowNewServiceModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
+                  style={{ background: '#F97316' }}
+                >
+                  <span>+</span> Crear servicio
+                </button>
+              </div>
 
-                <div className="grid sm:grid-cols-2 gap-4 pt-2">
-                  {services.length === 0 ? (
-                    <p className="text-xs text-slate-400 col-span-2 py-4 text-center">Aún no tienes servicios publicados.</p>
-                  ) : (
-                    services.map(pub => (
-                      <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
-                        <div className="h-32 w-full overflow-hidden relative bg-slate-100">
-                          <img src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} alt={pub.titulo} className="w-full h-full object-cover" />
-                          <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500 text-white">
-                            {pub.estado || 'ACTIVA'}
-                          </span>
-                        </div>
-                        <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
-                              <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
-                            </div>
-                            <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
+              <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                {services.length === 0 ? (
+                  <p className="text-xs text-slate-400 col-span-2 py-4 text-center">Aún no tienes servicios publicados.</p>
+                ) : (
+                  services.map(pub => (
+                    <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+                      <div className="h-32 w-full overflow-hidden relative bg-slate-100">
+                        <img src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} alt={pub.titulo} className="w-full h-full object-cover" />
+                        <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500 text-white">
+                          {pub.estado || 'ACTIVA'}
+                        </span>
+                      </div>
+                      <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
+                            <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
                           </div>
+                          <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    </div>
+                  ))
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
