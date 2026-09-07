@@ -82,35 +82,22 @@ export const actualizarPerfil = async (req, res) => {
 // SUBIR AVATAR DE USUARIO
 // ==========================================
 export const subirAvatar = async (req, res) => {
-    console.log("🟢 ENTRÓ A LA RUTA DE SUBIR AVATAR");
-    console.log("HEADERS:", req.headers);
-    console.log("FILE:", req.file);
-    console.log("BODY:", req.body);
-    console.log("USUARIO:", req.usuario);
-
     try {
+        console.log("1. Entró a subirAvatar");
+        console.log("Usuario decodificado:", req.usuario);
+        console.log("Archivo recibido:", req.file);
+
         if (!req.file) {
             return res.status(400).json({ error: 'No se subió ninguna imagen.' });
         }
 
-        const usuario_id = req.usuario.id;
-        const avatar_url = req.file.path;
-
-        const updateQuery = `
-            UPDATE auth.usuarios 
-            SET avatar_url = $1 
-            WHERE id = $2 
-            RETURNING id, nombres, avatar_url;
-        `;
-        const { rows } = await pool.query(updateQuery, [avatar_url, usuario_id]);
-
-        res.status(200).json({
-            mensaje: '¡Foto de perfil actualizada con éxito!',
-            usuario: rows[0]
+        return res.status(200).json({
+            mensaje: '¡Prueba superada!',
+            url_falsa: req.file.path
         });
 
     } catch (error) {
-        console.error('❌ ERROR FATAL EN SUBIR AVATAR:', error);
+        console.error('❌ ERROR CAPTURADO EN SUBIR AVATAR:', error);
         res.status(500).json({ error: 'Error interno: ' + error.message });
     }
 };
