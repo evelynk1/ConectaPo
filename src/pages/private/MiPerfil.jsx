@@ -309,12 +309,25 @@ export default function MiPerfil() {
     setEditGeneratedBlocks([]);
     setEditScheduleRange({ start: '', end: '' });
 
-    try {
-      // AQUÍ ESTABA EL ERROR: Agregado el parámetro token
+   try {
+      // Intentamos obtener los bloques del backend
       const resBloques = await obtenerBloquesHorarios(pub.id, token);
-      setExistingBlocks(resBloques.bloques || []);
+      
+      // Asegurarnos de extraer el array, no importa cómo venga (Array directo, o dentro de 'bloques' o 'data')
+      let bloquesExtraidos = [];
+      if (Array.isArray(resBloques)) {
+        bloquesExtraidos = resBloques;
+      } else if (resBloques && Array.isArray(resBloques.bloques)) {
+        bloquesExtraidos = resBloques.bloques;
+      } else if (resBloques && Array.isArray(resBloques.data)) {
+        bloquesExtraidos = resBloques.data;
+      }
+
+      setExistingBlocks(bloquesExtraidos);
     } catch (err) {
       console.error("Error al cargar bloques:", err);
+      // Si falla, mostramos una alerta para saber exactamente QUÉ URL falló
+      alert("Hubo un problema al cargar los horarios guardados. Revisa la consola.");
       setExistingBlocks([]);
     }
 

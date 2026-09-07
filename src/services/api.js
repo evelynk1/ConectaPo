@@ -256,10 +256,12 @@ export async function subirFotosServicio(publicacionId, files, token) {
   return response.json();
 }
 
-// ==========================================
+/// ==========================================
 // FUNCIONES DE CALENDARIO / HORARIOS
 // ==========================================
+
 export async function guardarHorariosMasivos(publicacionId, bloques, token) {
+  // Coincide con: router.post('/publicacion/:publicacion_id/masivo')
   const response = await fetch(`${API_URL}/api/horarios/publicacion/${publicacionId}/masivo`, {
     method: 'POST',
     headers: {
@@ -278,22 +280,26 @@ export async function guardarHorariosMasivos(publicacionId, bloques, token) {
 }
 
 export async function obtenerBloquesHorarios(publicacionId, token) {
-  const response = await fetch(`${API_URL}/api/bloques-horarios/${publicacionId}`, {
+  // Coincide con: router.get('/publicacion/:publicacion_id')
+  const response = await fetch(`${API_URL}/api/horarios/publicacion/${publicacionId}`, {
     headers: {
       Authorization: `Bearer ${token}`
     }
   });
+  
   if (!response.ok) throw new Error('Error al obtener los bloques horarios.');
   return response.json();
 }
 
 export async function eliminarBloqueHorario(bloqueId, token) {
-  const response = await fetch(`${API_URL}/api/bloques-horarios/${bloqueId}`, {
+  // Coincide con: router.delete('/bloque/:id') --> ¡Aquí estaba el error de la ruta!
+  const response = await fetch(`${API_URL}/api/horarios/bloque/${bloqueId}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`
     }
   });
+  
   if (!response.ok) throw new Error('Error al eliminar el bloque horario.');
   return response.json();
 }
