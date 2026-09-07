@@ -217,3 +217,18 @@ export async function obtenerMisPublicaciones(token) {
   if (!response.ok) throw new Error('Error al obtener tus publicaciones.');
   return response.json();
 }
+
+// ==========================================
+// FUNCIÓN PARA OBTENER LOS TICKETS (ADMIN)
+// ==========================================
+
+export async function getTickets(token) {
+  const data = await request('/api/tickets', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(token)
+    }
+  })
+  return Array.isArray(data) ? data : (data.tickets || [])
+}
