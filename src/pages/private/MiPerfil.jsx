@@ -252,7 +252,11 @@ export default function MiPerfil() {
   };
 
   // --- EDITAR SERVICIO ---
-  const openEditModal = (pub) => {
+  // --- ESTADOS NUEVOS PARA BLOQUES EXISTENTES ---
+  const [existingBlocks, setExistingBlocks] = useState([]);
+
+  // --- ABRIR MODAL DE EDICIÓN CARGANDO FOTOS Y BLOQUES ---
+  const openEditModal = async (pub) => {
     setEditServiceForm({
       id: pub.id,
       titulo: pub.titulo,
@@ -268,40 +272,26 @@ export default function MiPerfil() {
     setEditIsConversable(pub.es_horario_conversable || false);
     setEditGeneratedBlocks([]);
     setEditScheduleRange({ start: '', end: '' });
+
+    // Cargar bloques existentes de la BD
+    try {
+      const resBloques = await obtenerBloquesHorarios(pub.id);
+      setExistingBlocks(resBloques.bloques || []);
+    } catch (err) {
+      console.error("Error al cargar bloques de la publicación", err);
+      setExistingBlocks([]);
+    }
+
     setShowEditServiceModal(true);
   };
 
-  const handleUpdateService = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setErrorMsg(null);
+  // --- ELIMINAR UN BLOQUE EXISTENTE DE LA BD ---
+  const handleDeleteExistingBlock = async (bloqueId) => {
     try {
-      const updatedPub = await actualizarPublicacionServicio(editServiceForm.id, {
-        titulo: editServiceForm.titulo,
-        descripcion: editServiceForm.descripcion,
-        precio_base: Number(editServiceForm.precio_base),
-        oficio_id: Number(editServiceForm.oficio_id),
-        anos_experiencia: Number(editServiceForm.anos_experiencia),
-        es_horario_conversable: editIsConversable,
-        foto_url_1: editServiceForm.foto_url_1 || null,
-        foto_url_2: editServiceForm.foto_url_2 || null,
-        foto_url_3: editServiceForm.foto_url_3 || null
-      }, token);
-
-      // Si generó nuevos bloques en la edición, también los guardamos
-      if (!editIsConversable && editGeneratedBlocks.length > 0) {
-        const bloquesFormateados = editGeneratedBlocks.map(b => ({
-          fecha_hora_inicio: `${b.fecha}T${b.hora_inicio}:00`, fecha_hora_fin: `${b.fecha}T${b.hora_fin}:00`
-        }));
-        await guardarHorariosMasivos(editServiceForm.id, bloquesFormateados, token);
-      }
-
-      setServices(services.map(s => s.id === editServiceForm.id ? { ...s, ...updatedPub.publicacion } : s));
-      setShowEditServiceModal(false);
+      await eliminarBloqueHorario(bloqueId, token);
+      setExistingBlocks(existingBlocks.filter(b => b.id !== bloqueId));
     } catch (error) {
-      setErrorMsg(error.message || 'Error al actualizar el servicio.');
-    } finally {
-      setIsSaving(false);
+      alert(error.message || 'Error al eliminar el bloque.');
     }
   };
 
@@ -696,7 +686,7 @@ export default function MiPerfil() {
                 <textarea rows={3} required value={editServiceForm.descripcion} onChange={e => setEditServiceForm({...editServiceForm, descripcion: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 resize-none" />
               </div>
 
-              {/* Subida de 3 Fotos en Edición */}
+              {/* Subida de 3 Fotos en Edición (Muestra la foto actual si existe) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2">Fotos del servicio (Máximo 3)</label>
                 <div className="grid grid-cols-3 gap-3">
@@ -710,7 +700,7 @@ export default function MiPerfil() {
                       ) : (
                         <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
                           <span className="text-2xl font-light mb-1">+</span>
-                          <span className="text-[10px] font-semibold">Añadir foto</span>
+                          <span className="text-[10px] font-semibold">Añadir foto {num}</span>
                           <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoChange('edit', num, e)} />
                         </label>
                       )}
@@ -719,7 +709,7 @@ export default function MiPerfil() {
                 </div>
               </div>
 
-              {/* CALENDARIO EN EDICIÓN */}
+              {/* CALENDARIO EN EDICIÓN (Muestra bloques actuales + Generador de nuevos) */}
               <div className="pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-bold text-slate-900 text-sm">📅 Modificar Calendario / Disponibilidad</h4>
@@ -739,9 +729,27 @@ export default function MiPerfil() {
                     <p className="text-xs text-slate-500 mb-0">Al activar esto, los clientes se contactarán directamente para acordar la fecha.</p>
                   </div>
                 ) : (
-                  <div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3">
-                      <h6 className="mb-2 text-xs font-bold text-slate-800">🗓️ Agregar Nuevos Bloques de Horarios</h6>
+                  <div className="space-y-4">
+                    {/* Lista de bloques ya creados en la BD */}
+                    {existingBlocks.length > 0 && (
+                      <div className="border border-emerald-200 rounded-2xl p-3 bg-emerald-50/20 max-h-40 overflow-y-auto">
+                        <h6 className="text-xs font-bold text-emerald-800 border-b border-emerald-100 pb-1 mb-2">Horarios ya publicados:</h6>
+                        <div className="space-y-1.5">
+                          {existingBlocks.map(b => (
+                            <div key={b.id} className="flex justify-between items-center p-2 bg-white border border-emerald-100 rounded-xl text-xs">
+                              <span className="font-semibold text-slate-700">
+                                {new Date(b.fecha_hora_inicio).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' })} - {new Date(b.fecha_hora_fin).toLocaleTimeString('es-CL', { timeStyle: 'short' })}
+                              </span>
+                              <button type="button" onClick={() => handleDeleteExistingBlock(b.id)} className="text-[10px] text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg font-bold cursor-pointer">Eliminar</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Generador de nuevos bloques */}
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <h6 className="mb-2 text-xs font-bold text-slate-800">🗓️ Agregar Más Bloques de Horarios</h6>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-500 mb-1">Desde</label>
@@ -751,22 +759,22 @@ export default function MiPerfil() {
                           <label className="block text-[10px] font-semibold text-slate-500 mb-1">Hasta</label>
                           <input type="date" value={editScheduleRange.end} onChange={e => setEditScheduleRange({...editScheduleRange, end: e.target.value})} className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs" />
                         </div>
-                        <button type="button" onClick={handleEditGenerateBlocks} className="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm">⚡ Generar</button>
+                        <button type="button" onClick={handleEditGenerateBlocks} className="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm cursor-pointer">⚡ Generar</button>
                       </div>
                     </div>
 
                     {editGeneratedBlocks.length > 0 && (
-                      <div className="border border-slate-100 rounded-2xl p-3 bg-white max-h-48 overflow-y-auto">
-                        <h6 className="text-xs font-bold text-slate-800 border-b pb-1 mb-2">Bloques listos para guardar:</h6>
+                      <div className="border border-slate-100 rounded-2xl p-3 bg-white max-h-40 overflow-y-auto">
+                        <h6 className="text-xs font-bold text-slate-800 border-b pb-1 mb-2">Nuevos bloques listos para guardar:</h6>
                         <div className="space-y-3">
                           {Object.keys(editBlocksByDate).map(dateStr => (
                             <div key={dateStr}>
                               <div className="bg-slate-800 text-white px-2 py-1 rounded text-[11px] font-bold mb-1">📅 {dateStr}</div>
                               <div className="space-y-1 pl-2">
                                 {editBlocksByDate[dateStr].map(block => (
-                                  <div key={block.id_temporal} className="flex justify-between items-center p-2 border border-emerald-200 bg-emerald-50/30 rounded-lg">
-                                    <span className="text-xs font-bold">{block.hora_inicio} - {block.hora_fin}</span>
-                                    <button type="button" onClick={() => removeEditBlock(block.id_temporal)} className="text-[10px] text-red-600 font-semibold px-2 py-0.5">Quitar</button>
+                                  <div key={block.id_temporal} className="flex justify-between items-center p-2 border border-blue-200 bg-blue-50/30 rounded-lg">
+                                    <span className="text-xs font-bold text-slate-700">{block.hora_inicio} - {block.hora_fin}</span>
+                                    <button type="button" onClick={() => removeEditBlock(block.id_temporal)} className="text-[10px] text-red-600 font-semibold px-2 py-0.5 cursor-pointer">Quitar</button>
                                   </div>
                                 ))}
                               </div>
