@@ -10,7 +10,7 @@ export const obtenerPerfil = async (req, res) => {
         const query = `
             SELECT id, rut, nombres, primer_apellido, segundo_apellido, genero, 
                    email, telefono, rol, avatar_url, comuna_id, villa_poblacion_id, 
-                   instagram_url, facebook_url, created_at 
+                   instagram_url, facebook_url, titulo_oficio, experiencia, biografia, created_at 
             FROM auth.usuarios 
             WHERE id = $1;
         `;
@@ -21,9 +21,7 @@ export const obtenerPerfil = async (req, res) => {
             return res.status(404).json({ error: 'Usuario no encontrado.' });
         }
 
-        res.json({
-            usuario: rows[0]
-        });
+        res.json({ usuario: rows[0] });
 
     } catch (error) {
         console.error('❌ Error al obtener el perfil:', error);
@@ -37,7 +35,11 @@ export const obtenerPerfil = async (req, res) => {
 export const actualizarPerfil = async (req, res) => {
     try {
         const usuario_id = req.usuario.id;
-        const { nombres, primer_apellido, segundo_apellido, telefono, avatar_url, comuna_id, villa_poblacion_id, instagram_url, facebook_url } = req.body;
+        const {
+            nombres, primer_apellido, segundo_apellido, telefono,
+            avatar_url, comuna_id, villa_poblacion_id, instagram_url,
+            facebook_url, titulo_oficio, experiencia, biografia
+        } = req.body;
 
         const query = `
             UPDATE auth.usuarios 
@@ -49,15 +51,18 @@ export const actualizarPerfil = async (req, res) => {
                 comuna_id = COALESCE($6, comuna_id),
                 villa_poblacion_id = COALESCE($7, villa_poblacion_id),
                 instagram_url = COALESCE($8, instagram_url),
-                facebook_url = COALESCE($9, facebook_url)
-            WHERE id = $10
-            RETURNING id, nombres, primer_apellido, email, telefono, avatar_url;
+                facebook_url = COALESCE($9, facebook_url),
+                titulo_oficio = COALESCE($10, titulo_oficio),
+                experiencia = COALESCE($11, experiencia),
+                biografia = COALESCE($12, biografia)
+            WHERE id = $13
+            RETURNING id, nombres, primer_apellido, email, telefono, avatar_url, titulo_oficio, experiencia, biografia;
         `;
 
         const values = [
             nombres, primer_apellido, segundo_apellido, telefono,
             avatar_url, comuna_id, villa_poblacion_id, instagram_url,
-            facebook_url, usuario_id
+            facebook_url, titulo_oficio, experiencia, biografia, usuario_id
         ];
 
         const { rows } = await pool.query(query, values);
@@ -83,7 +88,7 @@ export const subirAvatar = async (req, res) => {
         }
 
         const usuario_id = req.usuario.id;
-        const avatar_url = req.file.path;
+        const avatar_url = req.file.path; // Cloudinary nos devuelve la URL en path
 
         const updateQuery = `
             UPDATE auth.usuarios 
