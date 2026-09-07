@@ -259,3 +259,19 @@ export async function actualizarPublicacionServicio(id, data, token) {
 
   return response.json();
 }
+
+export async function eliminarPublicacionServicio(id, token) {
+  const response = await fetch(`${API_URL}/api/publicaciones/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Error al eliminar la publicación.');
+  }
+
+  return response.json();
+}
