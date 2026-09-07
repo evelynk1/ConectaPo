@@ -325,3 +325,37 @@ export async function getTickets(token) {
   })
   return Array.isArray(data) ? data : (data.tickets || [])
 }
+
+// ==========================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ==========================================
+
+export async function solicitarRecuperacionPass(telefono) {
+  // Asegúrate de que esta ruta coincida con tu auth.routes.js (ej: /api/auth/solicitar-recuperacion)
+  const response = await fetch(`${API_URL}/api/auth/solicitar-recuperacion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ telefono })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Error al solicitar la recuperación.');
+  }
+  return data;
+}
+
+export async function resetearPassword(token, nueva_password) {
+  // Asegúrate de que esta ruta coincida con tu auth.routes.js (ej: /api/auth/resetear-password)
+  const response = await fetch(`${API_URL}/api/auth/resetear-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, nueva_password })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Error al cambiar la contraseña.');
+  }
+  return data;
+}
