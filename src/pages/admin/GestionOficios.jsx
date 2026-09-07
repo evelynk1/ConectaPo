@@ -1,13 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom' // 👈 Importante para que funcione la navegación
+import { useUser } from '../../context/useUser'
+import { getTrades, createTrade, deleteTrade } from '../../services/api'
 
-const INITIAL_TRADES = [
-  { id: 1, name: 'Electricista', category: 'Instalaciones y Reparaciones', activeCount: 142, icon: '⚡' },
-  { id: 2, name: 'Carpintero', category: 'Construcción y Muebles', activeCount: 89, icon: '🪵' },
-  { id: 3, name: 'Plomero / Gasfíter', category: 'Instalaciones y Reparaciones', activeCount: 115, icon: '🔧' },
-  { id: 4, name: 'Pintor', category: 'Remodelación', activeCount: 64, icon: '🎨' },
-  { id: 5, name: 'Jardinero', category: 'Mantención y Exteriores', activeCount: 53, icon: '🌱' },
-]
+
 
 // Lista de emojis en formato de "teclado visual"
 const EMOJI_KEYBOARD = [
@@ -17,34 +13,96 @@ const EMOJI_KEYBOARD = [
 ]
 
 export default function GestionOficios() {
-  const navigate = useNavigate() // 👈 Activamos el hook
-  const [trades, setTrades] = useState(INITIAL_TRADES)
+  //const navigate = useNavigate() // 👈 Activamos el hook
+  //const [trades, setTrades] = useState(INITIAL_TRADES)
+  const navigate = useNavigate()
+  const { token } = useUser()
+  const [trades, setTrades] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
   const [searchTerm, setSearchTerm] = useState('')
   const [newTradeName, setNewTradeName] = useState('')
   const [newCategory, setNewCategory] = useState('')
   const [newIcon, setNewIcon] = useState('🛠️')
 
-  const handleAddTrade = (e) => {
-    e.preventDefault()
-    if (!newTradeName.trim() || !newCategory.trim()) return
+  useEffect(() => {
+  const loadTrades = async () => {
+    try {
+      setLoading(true)
+      setError('')
 
-    const newEntry = {
-      id: Date.now(),
-      name: newTradeName.trim(),
-      category: newCategory.trim(),
-      activeCount: 0,
-      icon: newIcon,
+      const data = await getTrades()
+
+      const normalized = data.map((oficio) => ({
+        id: oficio.id,
+        name: oficio.nombre,
+        category: 'Sin categoría',
+        activeCount: 0,
+        icon: oficio.icono_url || '🛠️',
+      }))
+
+      setTrades(normalized)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    setTrades([newEntry, ...trades])
+  loadTrades()
+}, [])
+
+  const handleAddTrade = async (e) => {
+  e.preventDefault()
+
+  if (!newTradeName.trim()) return
+
+  try {
+    setError('')
+
+    const data = await createTrade(
+      {
+        nombre: newTradeName.trim(),
+        icono_url: newIcon,
+      },
+      token
+    )
+
+    const oficio = data.oficio
+
+    setTrades((prev) => [
+      {
+        id: oficio.id,
+        name: oficio.nombre,
+        category: 'Sin categoría',
+        activeCount: 0,
+        icon: oficio.icono_url || '🛠️',
+      },
+      ...prev,
+    ])
+
     setNewTradeName('')
     setNewCategory('')
     setNewIcon('🛠️')
+  } catch (err) {
+    alert(err.message)
   }
+}
 
-  const handleDelete = (id) => {
-    setTrades(trades.filter(t => t.id !== id))
+ const handleDelete = async (id) => {
+  const confirmar = window.confirm('¿Deseas eliminar este oficio?')
+
+  if (!confirmar) return
+
+  try {
+    await deleteTrade(id, token)
+
+    setTrades((prev) => prev.filter((t) => t.id !== id))
+  } catch (err) {
+    alert(err.message)
   }
+}
 
   const filteredTrades = trades.filter(t => 
     t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
