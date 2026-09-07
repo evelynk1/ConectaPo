@@ -8,6 +8,7 @@ import {
   obtenerMisPublicaciones, 
   crearPublicacionServicio, 
   actualizarPublicacionServicio,
+  eliminarPublicacionServicio,
   guardarHorariosMasivos,
   obtenerOficios
 } from '../../services/api';
@@ -31,21 +32,18 @@ export default function MiPerfil() {
   const [editForm, setEditForm] = useState({});
   const [avatarFile, setAvatarFile] = useState(null);
   const [services, setServices] = useState([]);
-  const [oficios, setOficios] = useState([]); // Lista de oficios de la BD
+  const [oficios, setOficios] = useState([]);
 
-  // Modo vacaciones
-  const [modoVacaciones, setModoVacaciones] = useState(false);
-
-  // Formulario de Creación
+  // Formulario de Creación (con 3 fotos)
   const [newServiceForm, setNewServiceForm] = useState({
     titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
     descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
   });
 
-  // Formulario de Edición
+  // Formulario de Edición (con 3 fotos)
   const [editServiceForm, setEditServiceForm] = useState({
     id: null, titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
-    descripcion: ''
+    descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
   });
 
   // Calendario
@@ -59,16 +57,13 @@ export default function MiPerfil() {
     const fetchAllData = async () => {
       try {
         setIsLoading(true);
-        
-        // 1. Traer oficios para el selector
         const oficiosData = await obtenerOficios();
         setOficios(oficiosData.oficios || []);
 
-        // 2. Traer el perfil
         const dbData = await getUserProfile(token);
         const avatarUrl = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
 
-        const profileData = {
+        setUserProfile({
           nombres: dbData.nombres || '',
           primer_apellido: dbData.primer_apellido || '',
           segundo_apellido: dbData.segundo_apellido || '',
@@ -84,14 +79,28 @@ export default function MiPerfil() {
           biografia: dbData.biografia || '',
           location: 'Chile',
           skills: 'Aún no registradas'
-        };
+        });
+        setEditForm({
+          nombres: dbData.nombres || '',
+          primer_apellido: dbData.primer_apellido || '',
+          segundo_apellido: dbData.segundo_apellido || '',
+          email: dbData.email || '',
+          telefono: dbData.telefono || '',
+          genero: dbData.genero || '',
+          instagram_url: dbData.instagram_url || '',
+          facebook_url: dbData.facebook_url || '',
+          avatar: avatarUrl,
+          rol: dbData.rol,
+          titulo_oficio: dbData.titulo_oficio || 'Profesional independiente',
+          experiencia: dbData.experiencia || 'Aún sin información',
+          biografia: dbData.biografia || '',
+          location: 'Chile',
+          skills: 'Aún no registradas'
+        });
 
-        setUserProfile(profileData);
-        setEditForm(profileData);
-
-        // 3. Traer publicaciones
         const pubData = await obtenerMisPublicaciones(token);
-        setServices(pubData.publicaciones || []);
+        const pubsConEstado = (pubData.publicaciones || []).map(p => ({ ...p, estado: p.estado || 'ACTIVA' }));
+        setServices(pubsConEstado);
 
       } catch (error) {
         console.error("Error cargando datos:", error);
@@ -139,7 +148,28 @@ export default function MiPerfil() {
     }
   };
 
-  // --- LÓGICA DE CALENDARIO (MOCKUP) ---
+  // --- LÓGICA DE FOTOS (CREACIÓN Y EDICIÓN) ---
+  const handlePhotoChange = (formType, num, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      if (formType === 'create') {
+        setNewServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: url }));
+      } else {
+        setEditServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: url }));
+      }
+    }
+  };
+
+  const removePhoto = (formType, num) => {
+    if (formType === 'create') {
+      setNewServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: '' }));
+    } else {
+      setEditServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: '' }));
+    }
+  };
+
+  // --- LÓGICA DE CALENDARIO ---
   const handleGenerateBlocks = () => {
     if (!scheduleRange.start) { alert("Selecciona al menos la fecha de inicio."); return; }
     const startDate = new Date(scheduleRange.start + "T00:00:00");
@@ -166,7 +196,7 @@ export default function MiPerfil() {
     return acc;
   }, {});
 
-  // --- LÓGICA DE CREACIÓN DE SERVICIO ---
+  // --- CREAR SERVICIO ---
   const handleCreateService = async (e) => {
     e.preventDefault();
     setIsCreatingService(true);
@@ -175,7 +205,10 @@ export default function MiPerfil() {
       const pubRes = await crearPublicacionServicio({
         titulo: newServiceForm.titulo, descripcion: newServiceForm.descripcion,
         precio_base: Number(newServiceForm.precio_base), oficio_id: Number(newServiceForm.oficio_id),
-        anos_experiencia: Number(newServiceForm.anos_experiencia), es_horario_conversable: isConversable
+        anos_experiencia: Number(newServiceForm.anos_experiencia), es_horario_conversable: isConversable,
+        foto_url_1: newServiceForm.foto_url_1 || null,
+        foto_url_2: newServiceForm.foto_url_2 || null,
+        foto_url_3: newServiceForm.foto_url_3 || null
       }, token);
 
       const nuevaPubId = pubRes.publicacion.id;
@@ -185,9 +218,9 @@ export default function MiPerfil() {
         }));
         await guardarHorariosMasivos(nuevaPubId, bloquesFormateados, token);
       }
-      setServices([pubRes.publicacion, ...services]);
+      setServices([{ ...pubRes.publicacion, estado: 'ACTIVA' }, ...services]);
       setShowNewServiceModal(false);
-      setNewServiceForm({ titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '' });
+      setNewServiceForm({ titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '' });
       setGeneratedBlocks([]); setScheduleRange({ start: '', end: '' }); setIsConversable(false);
     } catch (error) {
       setErrorMsg(error.message || 'Error al crear el servicio.');
@@ -196,7 +229,7 @@ export default function MiPerfil() {
     }
   };
 
-  // --- LÓGICA DE EDICIÓN DE SERVICIO ---
+  // --- EDITAR SERVICIO ---
   const openEditModal = (pub) => {
     setEditServiceForm({
       id: pub.id,
@@ -204,7 +237,10 @@ export default function MiPerfil() {
       precio_base: pub.precio_base,
       oficio_id: pub.oficio_id || '',
       anos_experiencia: pub.anos_experiencia || 0,
-      descripcion: pub.descripcion
+      descripcion: pub.descripcion,
+      foto_url_1: pub.foto_url_1 || '',
+      foto_url_2: pub.foto_url_2 || '',
+      foto_url_3: pub.foto_url_3 || ''
     });
     setShowEditServiceModal(true);
   };
@@ -219,7 +255,10 @@ export default function MiPerfil() {
         descripcion: editServiceForm.descripcion,
         precio_base: Number(editServiceForm.precio_base),
         oficio_id: Number(editServiceForm.oficio_id),
-        anos_experiencia: Number(editServiceForm.anos_experiencia)
+        anos_experiencia: Number(editServiceForm.anos_experiencia),
+        foto_url_1: editServiceForm.foto_url_1 || null,
+        foto_url_2: editServiceForm.foto_url_2 || null,
+        foto_url_3: editServiceForm.foto_url_3 || null
       }, token);
 
       setServices(services.map(s => s.id === editServiceForm.id ? { ...s, ...updatedPub.publicacion } : s));
@@ -228,6 +267,27 @@ export default function MiPerfil() {
       setErrorMsg(error.message || 'Error al actualizar el servicio.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // --- PAUSAR Y ELIMINAR (SOFT DELETE) ---
+  const toggleServiceStatus = async (pub) => {
+    const nuevoEstado = pub.estado === 'ACTIVA' ? 'PAUSADA' : 'ACTIVA';
+    try {
+      await actualizarPublicacionServicio(pub.id, { estado: nuevoEstado }, token);
+      setServices(services.map(s => s.id === pub.id ? { ...s, estado: nuevoEstado } : s));
+    } catch (error) {
+      alert(error.message || 'Error al cambiar estado del servicio.');
+    }
+  };
+
+  const handleDeleteService = async (id) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este servicio? Se mantendrá tu historial por seguridad.')) return;
+    try {
+      await eliminarPublicacionServicio(id, token);
+      setServices(services.filter(s => s.id !== id));
+    } catch (error) {
+      alert(error.message || 'Error al eliminar la publicación.');
     }
   };
 
@@ -242,7 +302,6 @@ export default function MiPerfil() {
       <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }} />
 
       <div className="max-w-5xl mx-auto px-6">
-        {/* Cabecera del Perfil */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 mb-8 relative z-10">
           <div className="flex items-end gap-5">
             <img src={userProfile.avatar} alt={fullName} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
@@ -257,7 +316,6 @@ export default function MiPerfil() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Columna Izquierda */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-4">Información de contacto</h3>
@@ -272,7 +330,6 @@ export default function MiPerfil() {
             </div>
           </div>
 
-          {/* Columna Derecha */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción profesional</h3>
@@ -282,41 +339,21 @@ export default function MiPerfil() {
             {/* Panel de Publicaciones */}
             {(userProfile.rol === 'PROFESIONAL' || userProfile.rol === 'CLIENTE') && (
               <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-                
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
                     <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    {/* Botón Modo Vacaciones */}
-                    <label className="flex items-center cursor-pointer bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition-colors">
-                      <span className="text-[11px] font-bold text-slate-600 mr-2">Modo Vacaciones</span>
-                      <div className="relative">
-                        <input type="checkbox" className="sr-only" checked={modoVacaciones} onChange={() => setModoVacaciones(!modoVacaciones)} />
-                        <div className={`block w-8 h-4 rounded-full transition-colors ${modoVacaciones ? 'bg-amber-500' : 'bg-slate-300'}`}></div>
-                        <div className={`dot absolute left-0.5 top-0.5 bg-white w-3 h-3 rounded-full transition-transform ${modoVacaciones ? 'transform translate-x-4' : ''}`}></div>
-                      </div>
-                    </label>
-
-                    <button 
-                      onClick={() => setShowNewServiceModal(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
-                      style={{ background: '#F97316' }}
-                    >
-                      <span>+</span> Crear servicio
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => setShowNewServiceModal(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
+                    style={{ background: '#F97316' }}
+                  >
+                    <span>+</span> Crear servicio
+                  </button>
                 </div>
 
-                {modoVacaciones && (
-                  <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
-                    <span>🏖️</span> Tienes el Modo Vacaciones activado. Tus clientes verán que no estás disponible temporalmente.
-                  </div>
-                )}
-
-                <div className={`grid sm:grid-cols-2 gap-4 pt-2 transition-opacity ${modoVacaciones ? 'opacity-60 grayscale-[50%]' : ''}`}>
+                <div className="grid sm:grid-cols-2 gap-4 pt-2">
                   {services.length === 0 ? (
                     <p className="text-xs text-slate-400 col-span-2 py-4 text-center">Aún no tienes servicios publicados.</p>
                   ) : (
@@ -324,8 +361,8 @@ export default function MiPerfil() {
                       <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
                         <div className="h-32 w-full overflow-hidden relative bg-slate-100">
                           <img src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} alt={pub.titulo} className="w-full h-full object-cover" />
-                          <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${modoVacaciones ? 'bg-amber-500' : 'bg-emerald-500'}`}>
-                            {modoVacaciones ? 'DE VACACIONES' : (pub.estado || 'ACTIVA')}
+                          <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${pub.estado === 'PAUSADA' ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+                            {pub.estado || 'ACTIVA'}
                           </span>
                         </div>
                         <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
@@ -337,13 +374,25 @@ export default function MiPerfil() {
                             <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
                           </div>
                           
-                          {/* BOTON EDITAR EN LA TARJETA */}
-                          <div className="pt-3 border-t border-slate-50 mt-auto">
+                          {/* BOTONES DE ACCIÓN: EDITAR, PAUSAR/ACTIVAR, ELIMINAR */}
+                          <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
                             <button 
                               onClick={() => openEditModal(pub)}
-                              className="w-full py-1.5 text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer"
                             >
-                              <span>✏️</span> Editar detalles
+                              ✏️ Editar
+                            </button>
+                            <button 
+                              onClick={() => toggleServiceStatus(pub)}
+                              className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}
+                            >
+                              {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteService(pub.id)}
+                              className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer"
+                            >
+                              🗑️ Eliminar
                             </button>
                           </div>
 
@@ -367,7 +416,6 @@ export default function MiPerfil() {
             <h3 className="font-bold text-slate-900 mb-4 border-b pb-2">Editar Información del Perfil</h3>
             {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{errorMsg}</div>}
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              {/* Contenido del modal (Mismo de antes) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2">Foto de perfil</label>
                 <div className="flex items-center gap-4">
@@ -411,7 +459,7 @@ export default function MiPerfil() {
         </div>
       )}
 
-      {/* 2. MODAL CREAR SERVICIO (CON SELECTOR DE OFICIO Y CALENDARIO) */}
+      {/* 2. MODAL CREAR SERVICIO */}
       {showNewServiceModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
@@ -445,6 +493,29 @@ export default function MiPerfil() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción detallada *</label>
                   <textarea rows={3} required value={newServiceForm.descripcion} onChange={e => setNewServiceForm({...newServiceForm, descripcion: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 resize-none" />
+                </div>
+
+                {/* Subida de 3 Fotos */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">Fotos del servicio (Máximo 3)</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map(num => (
+                      <div key={num} className="relative h-24 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center group">
+                        {newServiceForm[`foto_url_${num}`] ? (
+                          <>
+                            <img src={newServiceForm[`foto_url_${num}`]} alt={`Foto ${num}`} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => removePhoto('create', num)} className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-600 cursor-pointer">✕</button>
+                          </>
+                        ) : (
+                          <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                            <span className="text-2xl font-light mb-1">+</span>
+                            <span className="text-[10px] font-semibold">Añadir foto</span>
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoChange('create', num, e)} />
+                          </label>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -524,11 +595,11 @@ export default function MiPerfil() {
         </div>
       )}
 
-      {/* 3. MODAL EDITAR SERVICIO */}
+      {/* 3. MODAL EDITAR SERVICIO (CON 3 FOTOS) */}
       {showEditServiceModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
+            <div className="flex items-center justify-between border-b pb-3 mb-2">
               <h3 className="font-bold text-slate-900 text-base">Editar Servicio</h3>
               <button onClick={() => setShowEditServiceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-xs cursor-pointer">✕</button>
             </div>
@@ -556,6 +627,29 @@ export default function MiPerfil() {
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción detallada *</label>
                 <textarea rows={3} required value={editServiceForm.descripcion} onChange={e => setEditServiceForm({...editServiceForm, descripcion: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 resize-none" />
+              </div>
+
+              {/* Subida de 3 Fotos en Edición */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-2">Fotos del servicio (Máximo 3)</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[1, 2, 3].map(num => (
+                    <div key={num} className="relative h-24 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center group">
+                      {editServiceForm[`foto_url_${num}`] ? (
+                        <>
+                          <img src={editServiceForm[`foto_url_${num}`]} alt={`Foto ${num}`} className="w-full h-full object-cover" />
+                          <button type="button" onClick={() => removePhoto('edit', num)} className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-600 cursor-pointer">✕</button>
+                        </>
+                      ) : (
+                        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                          <span className="text-2xl font-light mb-1">+</span>
+                          <span className="text-[10px] font-semibold">Añadir foto</span>
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoChange('edit', num, e)} />
+                        </label>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
               
               <div className="flex gap-3 pt-4 border-t border-slate-100">
