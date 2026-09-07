@@ -124,6 +124,7 @@ export default function MiPerfil() {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
+      // Solo para que tú lo veas en la pantalla antes de guardar
       setEditForm({ ...editForm, avatar: URL.createObjectURL(file) });
     }
   };
@@ -133,31 +134,36 @@ export default function MiPerfil() {
     setIsSaving(true);
     setErrorMsg(null);
     try {
-      let nuevaUrlAvatar = userProfile.avatar;
-
-      if (avatarFile) {
-        const uploadRes = await uploadUserAvatar(avatarFile, token);
-        nuevaUrlAvatar = uploadRes.usuario?.avatar_url || uploadRes.avatar_url || uploadRes.url || nuevaUrlAvatar;
-      }
-
+      // 1. Enviamos SOLO los datos de texto al backend (Fíjate que quitamos avatar_url de aquí)
       const payload = {
         telefono: editForm.telefono, 
         genero: editForm.genero,
         instagram_url: editForm.instagram_url, 
         facebook_url: editForm.facebook_url,
-        avatar_url: nuevaUrlAvatar,
         titulo_oficio: editForm.titulo_oficio,
         experiencia: editForm.experiencia, 
         biografia: editForm.biografia
       };
-      
       await updateUserProfile(payload, token);
-      
-      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: nuevaUrlAvatar }));
-      setEditForm((prev) => ({ ...prev, avatar: nuevaUrlAvatar }));
+
+      // 2. Si el usuario subió una foto nueva, dejamos que el endpoint de Multer haga su magia en la BD
+      if (avatarFile) {
+        console.log("Subiendo avatar a Cloudinary...");
+        const uploadRes = await uploadUserAvatar(avatarFile, token);
+        console.log("Respuesta exitosa de la foto:", uploadRes); // <-- Si esto falla, lo veremos en la consola
+      }
+
+      // 3. Forzamos la recarga de datos desde la BD para traer la URL real
+      const dbData = await getUserProfile(token);
+      const avatarUrlReal = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
+
+      // 4. Actualizamos la pantalla con la URL 100% real de la base de datos
+      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: avatarUrlReal }));
+      setEditForm((prev) => ({ ...prev, avatar: avatarUrlReal }));
       setShowEditProfileModal(false);
       setAvatarFile(null);
     } catch (error) {
+      console.error("Error al guardar:", error);
       setErrorMsg(error.message || 'Error al actualizar el perfil.');
     } finally {
       setIsSaving(false);
