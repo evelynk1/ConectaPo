@@ -10,14 +10,6 @@ const STATS = [
     { label: 'Servicios activos', value: '1.204', delta: '+8%', icon: '🔧', color: '#10B981' },
 ]
 
-// Datos simulados para los usuarios nuevos
-const RECENT_USERS = [
-    { name: 'Jorge Herrera', role: 'Profesional', trade: 'Electricista', joined: 'Hoy', avatar: 'JH' },
-    { name: 'Claudia Morales', role: 'Cliente', trade: '—', joined: 'Ayer', avatar: 'CM' },
-    { name: 'Felipe Rojas', role: 'Profesional', trade: 'Carpintero', joined: '22/08', avatar: 'FR' },
-    { name: 'Sofía Navarro', role: 'Cliente', trade: '—', joined: '21/08', avatar: 'SN' },
-]
-
 // Utilidades para los estilos de los badges
 const STATUS_BADGE = {
     abierto: 'bg-red-100 text-red-700',
@@ -45,10 +37,14 @@ export default function DashboardAdmin() {
     const [tickets, setTickets] = useState([])
     const [loadingTickets, setLoadingTickets] = useState(true)
 
+    // Estados para los usuarios recientes
+    const [recentUsers, setRecentUsers] = useState([])
+    const [loadingUsers, setLoadingUsers] = useState(true)
+
     useEffect(() => {
+        // Cargar Tickets
         getTickets(token)
             .then(data => {
-                // Mapeamos los datos de la API para que encajen con la tabla de administración
                 const formatted = (Array.isArray(data) ? data : data.tickets || []).map(t => ({
                     id: `TK-${t.id || t.ticket_id || '000'}`,
                     user: t.nombre_usuario || t.user || 'Usuario Anónimo',
@@ -62,13 +58,66 @@ export default function DashboardAdmin() {
                 ])
             })
             .catch(() => {
-                // Fallback por si la API falla o no está disponible
                 setTickets([
                     { id: 'TK-001', user: 'María González', issue: 'Error al cargar imagen de perfil', status: 'abierto', priority: 'alta', date: '24/08/2026' }
                 ])
             })
             .finally(() => setLoadingTickets(false))
+
+        // Cargar Usuarios Recientes desde la API
+        const fetchRecentUsers = async () => {
+            try {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/usuarios`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                if (!response.ok) throw new Error('Error al obtener usuarios')
+                const data = await response.json()
+                const listaUsuarios = Array.isArray(data) ? data : (data.usuarios || data.users || [])
+
+                // Mapear y formatear los usuarios de la base de datos
+                const formattedUsers = listaUsuarios.slice(0, 5).map(u => {
+                    const nombreCompleto = [u.nombres || u.nombre || u.name, u.apellidos || u.apellido || '']
+                        .filter(Boolean)
+                        .join(' ') || 'Usuario';
+                    
+                    // Generar iniciales para el avatar
+                    const iniciales = nombreCompleto
+                        .split(' ')
+                        .map(n => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2);
+
+                    const rolNormalizado = String(u.rol || u.role || 'CLIENTE').toUpperCase();
+                    const rolTexto = rolNormalizado === 'PROFESIONAL' ? 'Profesional' : rolNormalizado === 'ADMIN' ? 'Administrador' : 'Cliente';
+
+                    return {
+                        name: nombreCompleto,
+                        role: rolTexto,
+                        trade: u.oficio_nombre || u.trade || '—',
+                        joined: u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Reciente',
+                        avatar: iniciales || 'US'
+                    }
+                })
+
+                setRecentUsers(formattedUsers.length > 0 ? formattedUsers : getFallbackUsers())
+            } catch (error) {
+                setRecentUsers(getFallbackUsers())
+            } finally {
+                setLoadingUsers(false)
+            }
+        }
+
+        if (token) {
+            fetchRecentUsers()
+        }
     }, [token])
+
+    // Fallback por si la API de usuarios falla
+    const getFallbackUsers = () => [
+        { name: 'Jorge Herrera', role: 'Profesional', trade: 'Electricista', joined: 'Hoy', avatar: 'JH' },
+        { name: 'Claudia Morales', role: 'Cliente', trade: '—', joined: 'Ayer', avatar: 'CM' }
+    ]
 
     return (
         <div className="p-6 space-y-6 bg-slate-100 min-h-full">
@@ -155,15 +204,17 @@ export default function DashboardAdmin() {
                     </div>
                 </article>
 
-                {/* Lista de Nuevos Usuarios */}
+                {/* Lista de Nuevos Usuarios (Conectada a la BD) */}
                 <article className="bg-white rounded-3xl border border-slate-100 shadow-sm">
                     <div className="px-7 py-5 border-b border-slate-100">
                         <h2 className="font-bold text-slate-950 text-lg">Nuevos registros</h2>
                         <p className="text-xs text-slate-400 mt-0.5">Usuarios creados recientemente</p>
                     </div>
                     <div className="p-6 space-y-5">
-                        {RECENT_USERS.map((u) => (
-                            <div key={u.name} className="flex items-center gap-4 p-2 rounded-2xl hover:bg-slate-50 transition-colors">
+                        {loadingUsers ? (
+                            <p className="text-center text-slate-400 py-6 text-sm">Cargando usuarios...</p>
+                        ) : recentUsers.map((u, idx) => (
+                            <div key={idx} className="flex items-center gap-4 p-2 rounded-2xl hover:bg-slate-50 transition-colors">
                                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-inner">
                                     {u.avatar}
                                 </div>
