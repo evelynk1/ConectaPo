@@ -72,7 +72,7 @@ export default function MiPerfil() {
 
       if (avatarFile) {
         const uploadRes = await uploadUserAvatar(avatarFile, token);
-        finalAvatarUrl = uploadRes.usuario.avatar_url;
+        finalAvatarUrl = uploadRes.usuario?.avatar_url || uploadRes.avatar_url || editForm.avatar;
       }
 
       const payload = {
