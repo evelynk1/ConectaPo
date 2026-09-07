@@ -93,6 +93,11 @@ export async function getPublications() {
   return Array.isArray(data) ? data : (data.publicaciones || [])
 }
 
+export async function getPublication(id) {
+  const data = await request(`/api/publicaciones/${id}`)
+  return data.publicacion || data
+}
+
 export function normalizePublication(publication) {
   const name = [publication.usuario_nombre, publication.usuario_apellido].filter(Boolean).join(' ') || 'Profesional ConectaPo'
   const price = Number(publication.precio_base || 0)

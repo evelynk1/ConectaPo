@@ -1,12 +1,27 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { CATEGORIES } from '../../data/services'
 import StarRating from '../../components/StarRating'
 import { getPublications, normalizePublication } from '../../services/api'
 
+const normalizeText = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+
+const categoryTerms = {
+  'Gasfitería': 'gasfiter',
+  Electricidad: 'electric',
+  Carpintería: 'carpinter',
+  Pintura: 'pintor',
+  Aseo: 'aseo',
+  Jardinería: 'jardin',
+}
+
 export default function Galeria() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
 
   // Efecto para hacer scroll automático al cargar la vista si viene con hash o ruta de galería
   useEffect(() => {
@@ -21,9 +36,9 @@ export default function Galeria() {
   }, [location])
 
   // Estados para los filtros de búsqueda, categoría, comuna y ordenamiento
-  const [search, setSearch] = useState('')
-  const [categoria, setCategoria] = useState('')
-  const [comuna, setComuna] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
+  const [categoria, setCategoria] = useState(() => searchParams.get('categoria') ?? '')
+  const [comuna, setComuna] = useState(() => searchParams.get('comuna') ?? '')
   const [sort, setSort] = useState('rating')
   const [services, setServices] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,9 +53,15 @@ export default function Galeria() {
 
   // Lógica para filtrar y ordenar los servicios según los inputs del usuario
   const filteredServices = services.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
-                          s.trade.toLowerCase().includes(search.toLowerCase())
-    const matchesCategoria = categoria === '' || s.trade === categoria || s.category === categoria
+    const normalizedSearch = normalizeText(search)
+    const normalizedTrade = normalizeText(s.trade)
+    const matchesSearch = normalizeText(s.name).includes(normalizedSearch) ||
+      normalizedTrade.includes(normalizedSearch) ||
+      Object.entries(categoryTerms).some(([label, term]) =>
+        normalizeText(label).includes(normalizedSearch) && normalizedTrade.includes(term)
+      )
+    const matchesCategoria = categoria === '' || s.category === categoria ||
+      normalizedTrade.includes(categoryTerms[categoria] ?? normalizeText(categoria))
     const matchesComuna = comuna === '' || s.comuna === comuna
     return matchesSearch && matchesCategoria && matchesComuna
   }).sort((a, b) => {

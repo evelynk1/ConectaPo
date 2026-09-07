@@ -1,12 +1,32 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { SERVICES } from '../../data/services'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import StarRating from '../../components/StarRating'
+import { getPublication, normalizePublication } from '../../services/api'
 
 export default function Detalle() {
   const navigate = useNavigate()
-  const s = SERVICES[0]
+  const { id } = useParams()
   const [selectedSlot, setSelectedSlot] = useState(null)
+  const [service, setService] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+
+    getPublication(id)
+      .then((publication) => {
+        if (active) setService(normalizePublication(publication))
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message || 'No fue posible cargar esta publicación.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => { active = false }
+  }, [id])
 
   const slots = [
     { day: 'Lun 11', times: ['09:00', '11:00', '15:00'] },
@@ -14,6 +34,25 @@ export default function Detalle() {
     { day: 'Mié 13', times: ['09:00', '13:00'] },
     { day: 'Jue 14', times: ['11:00', '15:00', '17:00'] },
   ]
+
+  if (loading) {
+    return <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center text-slate-500">Cargando publicación...</div>
+  }
+
+  if (error || !service) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-slate-600">{error || 'La publicación no fue encontrada.'}</p>
+        <button onClick={() => navigate('/galeria')} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">Volver a la galería</button>
+      </div>
+    )
+  }
+
+  const s = service
+  const whatsappNumber = String(s.usuario_telefono || '').replace(/\D/g, '')
+  const whatsappUrl = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hola ${s.name}, vi tu publicación "${s.titulo || s.trade}" en ConectaPo y me gustaría cotizar un servicio.`)}`
+    : null
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50">
@@ -27,7 +66,7 @@ export default function Detalle() {
           <span>/</span>
           <button onClick={() => navigate('/galeria')} className="hover:text-blue-600 transition-colors">Servicios</button>
           <span>/</span>
-          <span className="text-slate-700 font-medium">{s.name}</span>
+          <span className="text-slate-700 font-medium">{s.titulo || s.trade}</span>
         </div>
       </div>
 
@@ -39,7 +78,7 @@ export default function Detalle() {
             
             {/* Imagen destacada del servicio */}
             <div className="rounded-3xl overflow-hidden h-72 md:h-96 bg-slate-100 relative">
-              <img src={s.image} alt={s.trade} className="w-full h-full object-cover" />
+              <img src={s.image} alt={s.titulo || s.trade} className="w-full h-full object-cover" />
             </div>
 
             {/* Cabecera del profesional */}
@@ -49,11 +88,11 @@ export default function Detalle() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>
-                      {s.name}
+                      {s.titulo || s.trade}
                     </h1>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: '#2563EB' }}>✓ Verificado</span>
                   </div>
-                  <p className="text-slate-500 text-sm mt-0.5">{s.trade}</p>
+                  <p className="text-slate-500 text-sm mt-0.5">{s.name} · {s.trade}</p>
                   
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {/* Estrellas y valorización */}
@@ -83,14 +122,14 @@ export default function Detalle() {
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h2 className="font-semibold text-slate-900 mb-3">Descripción del servicio</h2>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Gasfitero certificado con más de 12 años de experiencia atendiendo el sector residencial y comercial en la Región Metropolitana. Ofrezco servicio de urgencias 24/7, instalación de artefactos sanitarios, detección y reparación de fugas, instalación de cañerías y sistemas de calefacción. Todos los trabajos incluyen garantía escrita de 90 días.
+                {s.descripcion || 'El profesional aún no ha agregado una descripción para este servicio.'}
               </p>
               <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  ['✓', 'Garantía 90 días'], 
-                  ['⚡', 'Respuesta rápida'], 
-                  ['🏅', 'Certificado'], 
-                  ['🔒', 'Asegurado']
+                  ['🏅', `${s.anos_experiencia || 0} años de experiencia`],
+                  ['⚡', s.es_horario_conversable ? 'Horario conversable' : 'Horario definido'],
+                  ['👤', s.name],
+                  ['📍', s.comuna]
                 ].map(([icon, text]) => (
                   <div key={text} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-blue-50 text-center">
                     <span className="text-lg">{icon}</span>
@@ -164,7 +203,7 @@ export default function Detalle() {
 
               {/* Acciones principales */}
               <div className="p-5 space-y-3">
-                <a href="https://wa.me/56987654321?text=Hola%20Carlos,%20vi%20tu%20perfil%20en%20ConectaPo%20y%20me%20gustar%C3%ADa%20cotizar%20un%20servicio."
+                {whatsappUrl ? <a href={whatsappUrl}
                   target="_blank" rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all hover:opacity-90 hover:shadow-lg"
                   style={{ background: '#25D366' }}>
@@ -172,7 +211,7 @@ export default function Detalle() {
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                   </svg>
                   Contactar por WhatsApp
-                </a>
+                </a> : <p className="w-full py-3.5 rounded-xl text-center bg-slate-100 text-slate-500 text-sm">Este profesional no ha registrado un teléfono de contacto.</p>}
                 {/* Botón corregido usando useNavigate de React Router */}
                 <button onClick={() => navigate('/galeria')} className="w-full py-2.5 rounded-xl text-xs text-slate-400 hover:text-slate-600 transition-colors">
                   ← Volver a la galería
@@ -186,7 +225,7 @@ export default function Detalle() {
               <div className="space-y-2.5">
                 {[
                   ['📅', 'Tiempo de respuesta', '< 1 hora'],
-                  ['🏅', 'Proyectos completados', '312'],
+                  ['🏅', 'Experiencia', `${s.anos_experiencia || 0} años`],
                   ['📍', 'Área de cobertura', 'RM completa'],
                   ['⏰', 'Horario', '7:00 – 21:00'],
                 ].map(([icon, label, val]) => (

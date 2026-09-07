@@ -132,7 +132,7 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-slate-100 px-4 py-3 flex flex-col gap-2">
           <Link
-            to="/buscar"
+            to="/galeria"
             onClick={closeMenu}
             className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
           >

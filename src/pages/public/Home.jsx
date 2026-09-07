@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom' // 1. Importamos el hook de navegación
-import { CATEGORIES, SERVICES } from '../../data/services' 
+import { CATEGORIES } from '../../data/services'
 import ServiceCard from '../../components/ServiceCard'
 import { getPublications, normalizePublication } from '../../services/api'
 
@@ -13,13 +13,17 @@ export default function Home() {
   useEffect(() => {
     getPublications()
       .then(publications => setServices(publications.map(normalizePublication)))
-      .catch(() => setServices(SERVICES))
+      .catch(() => setServices([]))
   }, [])
 
   // Función al enviar el formulario de búsqueda del Hero
   const handleSearch = (e) => {
     e.preventDefault()
-    navigate('/buscar')
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('q', search.trim())
+    if (comuna) params.set('comuna', comuna)
+
+    navigate(`/galeria${params.size ? `?${params.toString()}` : ''}`)
   }
 
   return (
@@ -102,7 +106,7 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
           {CATEGORIES.map(({ icon, label }) => (
-            <button key={label} onClick={() => navigate('/buscar')}
+            <button key={label} onClick={() => navigate(`/galeria?categoria=${encodeURIComponent(label)}`)}
               className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group">
               <span className="text-2xl group-hover:scale-110 transition-transform">{icon}</span>
               <span className="text-xs font-medium text-slate-600 text-center leading-tight">{label}</span>
