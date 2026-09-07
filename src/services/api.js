@@ -111,7 +111,6 @@ export async function getUserProfile(token) {
       ...authHeaders(token)
     },
   });
-  // Nuestro backend devuelve { mensaje, usuario_conectado }
   return data.usuario_conectado;
 }
 
@@ -124,6 +123,25 @@ export async function updateUserProfile(profileData, token) {
     },
     body: JSON.stringify(profileData),
   });
-  // Nuestro backend devuelve { mensaje, usuario }
   return data.usuario;
+}
+
+export async function uploadUserAvatar(file, token) {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const response = await fetch(`${API_URL}/api/usuarios/avatar`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new ApiError(data.error || 'Error al subir la imagen al servidor.', response.status);
+  }
+
+  return response.json();
 }

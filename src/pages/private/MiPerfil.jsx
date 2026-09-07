@@ -1,31 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/useUser';
-import { getUserProfile, updateUserProfile } from '../../services/api';
+import { getUserProfile, updateUserProfile, uploadUserAvatar } from '../../services/api';
 
 export default function MiPerfil() {
   const navigate = useNavigate();
   const { user, token } = useUser();
 
-  // ==========================================
-  // ESTADOS DE LA API Y CARGA
-  // ==========================================
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Estados para modales
-  const [showNewServiceModal, setShowNewServiceModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [isVacation, setIsVacation] = useState(false);
-
-  // Estado principal del perfil
   const [userProfile, setUserProfile] = useState({});
   const [editForm, setEditForm] = useState({});
+  const [avatarFile, setAvatarFile] = useState(null);
 
-  // ==========================================
-  // EFECTO DE CARGA INICIAL (GET)
-  // ==========================================
+  const MAX_BIO_LENGTH = 500;
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -43,13 +35,9 @@ export default function MiPerfil() {
           facebook_url: dbData.facebook_url || '',
           avatar: dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`,
           rol: dbData.rol,
-
-          // NUEVOS CAMPOS REALES
           titulo_oficio: dbData.titulo_oficio || (dbData.rol === 'PROFESIONAL' ? 'Profesional' : 'Cliente'),
           experiencia: dbData.experiencia || 'Aún sin información',
-          biografia: dbData.biografia || 'Completa tu perfil para que otros conozcan tus servicios.',
-
-          // Campos pendientes de implementar (Requieren tablas adicionales)
+          biografia: dbData.biografia || '',
           location: 'Chile',
           skills: 'Aún no registradas'
         };
@@ -66,39 +54,50 @@ export default function MiPerfil() {
     if (token) fetchProfile();
   }, [token]);
 
-  // ==========================================
-  // GUARDAR CAMBIOS (PUT)
-  // ==========================================
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvatarFile(file);
+      setEditForm({ ...editForm, avatar: URL.createObjectURL(file) });
+    }
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSaving(true);
     setErrorMsg(null);
 
     try {
-      // 1. Payload limpio: Incluimos los nuevos campos
+      let finalAvatarUrl = editForm.avatar;
+
+      if (avatarFile) {
+        const uploadRes = await uploadUserAvatar(avatarFile, token);
+        finalAvatarUrl = uploadRes.usuario.avatar_url;
+      }
+
       const payload = {
         telefono: editForm.telefono,
         genero: editForm.genero,
         instagram_url: editForm.instagram_url,
         facebook_url: editForm.facebook_url,
-        avatar_url: editForm.avatar,
+        avatar_url: finalAvatarUrl,
         titulo_oficio: editForm.titulo_oficio,
         experiencia: editForm.experiencia,
         biografia: editForm.biografia
       };
 
-      // 2. Disparamos la petición
       await updateUserProfile(payload, token);
 
-      // 3. Actualizamos la vista
       setUserProfile((prev) => ({
         ...prev,
         ...editForm,
+        avatar: finalAvatarUrl
       }));
 
       setShowEditProfileModal(false);
+      setAvatarFile(null);
     } catch (error) {
-      setErrorMsg(error.message || 'Error al actualizar el perfil.');
+      setErrorMsg(error.message || 'Error al actualizar el perfil o subir la foto.');
     } finally {
       setIsSaving(false);
     }
@@ -106,22 +105,19 @@ export default function MiPerfil() {
 
   const fullName = `${userProfile.nombres || ''} ${userProfile.primer_apellido || ''} ${userProfile.segundo_apellido || ''}`.trim();
 
-  // Mock de servicios
-  const [services, setServices] = useState([
-    { id: 1, title: 'Instalación de Grifería', price: '$25.000', cat: 'Gasfitería', desc: 'Servicio garantizado.', image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop', status: 'activo' }
-  ]);
-
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Cargando tu perfil desde el servidor...</div>;
   }
 
+  const bioLength = editForm.biografia?.length || 0;
+  const charsLeft = MAX_BIO_LENGTH - bioLength;
+  const isCloseToLimit = charsLeft <= 20;
+
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-      {/* BANNER SUPERIOR */}
       <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }} />
 
       <div className="max-w-5xl mx-auto px-6">
-        {/* CABECERA */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 mb-8 relative z-10">
           <div className="flex items-end gap-5">
             <img src={userProfile.avatar} alt={fullName} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
@@ -130,12 +126,11 @@ export default function MiPerfil() {
               <p className="text-slate-500 text-sm font-medium text-orange-600">{userProfile.titulo_oficio} · <span className="text-slate-500">{userProfile.location}</span></p>
             </div>
           </div>
-          <button onClick={() => { setEditForm(userProfile); setShowEditProfileModal(true); }} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white hover:bg-slate-50 cursor-pointer shadow-sm">
+          <button onClick={() => { setEditForm(userProfile); setShowEditProfileModal(true); setAvatarFile(null); }} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white hover:bg-slate-50 cursor-pointer shadow-sm">
             Editar perfil
           </button>
         </div>
 
-        {/* COLUMNA IZQUIERDA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
@@ -151,17 +146,15 @@ export default function MiPerfil() {
             </div>
           </div>
 
-          {/* COLUMNA DERECHA */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción profesional</h3>
-              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.biografia}</p>
+              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.biografia || 'Sin descripción aún.'}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* MODAL DE EDICIÓN */}
       {showEditProfileModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
@@ -170,6 +163,19 @@ export default function MiPerfil() {
             {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{errorMsg}</div>}
 
             <form onSubmit={handleSaveProfile} className="space-y-4">
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-2">Foto de perfil</label>
+                <div className="flex items-center gap-4">
+                  <img src={editForm.avatar} alt="Avatar preview" className="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-50" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+                  />
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -182,7 +188,6 @@ export default function MiPerfil() {
                 </div>
               </div>
 
-              {/* CAMPOS PROFESIONALES NUEVOS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Título u Oficio</label>
@@ -210,7 +215,6 @@ export default function MiPerfil() {
                 </div>
               </div>
 
-              {/* REDES SOCIALES */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Instagram (URL)</label>
@@ -222,17 +226,26 @@ export default function MiPerfil() {
                 </div>
               </div>
 
-              {/* BIOGRAFÍA */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Biografía / Descripción</label>
-                <textarea rows={4} value={editForm.biografia} onChange={e => setEditForm({ ...editForm, biografia: e.target.value })} placeholder="Cuéntale a tus clientes sobre ti y tu forma de trabajar..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all resize-none" />
+                <textarea
+                  rows={4}
+                  maxLength={MAX_BIO_LENGTH}
+                  value={editForm.biografia}
+                  onChange={e => setEditForm({ ...editForm, biografia: e.target.value })}
+                  placeholder="Cuéntale a tus clientes sobre ti y tu forma de trabajar..."
+                  className={`w-full px-3.5 py-2.5 rounded-xl border outline-none focus:ring-2 transition-all resize-none ${isCloseToLimit ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-slate-200 focus:border-orange-500 focus:ring-orange-100'}`}
+                />
+                <div className={`text-right text-[10px] mt-1 font-semibold ${isCloseToLimit ? 'text-red-500' : 'text-slate-400'}`}>
+                  {bioLength} / {MAX_BIO_LENGTH} caracteres {isCloseToLimit && '(Límite cercano)'}
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">
                 <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold transition-all hover:opacity-95 shadow-md disabled:opacity-70 disabled:cursor-not-allowed" style={{ background: '#F97316' }}>
                   {isSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
-                <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
+                <button type="button" onClick={() => { setShowEditProfileModal(false); setAvatarFile(null); }} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
                   Cancelar
                 </button>
               </div>
