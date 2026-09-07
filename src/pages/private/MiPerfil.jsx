@@ -44,11 +44,13 @@ export default function MiPerfil() {
           avatar: dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`,
           rol: dbData.rol,
 
-          // Campos FALSOS (Deuda técnica visual)
-          title: dbData.rol === 'PROFESIONAL' ? 'Profesional ConectaPo' : 'Cliente ConectaPo',
-          location: 'Chile (Requiere tabla comunas)',
-          experience: 'Aún sin información',
-          bio: 'Completa tu perfil para que otros conozcan tus servicios.',
+          // NUEVOS CAMPOS REALES
+          titulo_oficio: dbData.titulo_oficio || (dbData.rol === 'PROFESIONAL' ? 'Profesional' : 'Cliente'),
+          experiencia: dbData.experiencia || 'Aún sin información',
+          biografia: dbData.biografia || 'Completa tu perfil para que otros conozcan tus servicios.',
+
+          // Campos pendientes de implementar (Requieren tablas adicionales)
+          location: 'Chile',
           skills: 'Aún no registradas'
         };
 
@@ -73,19 +75,22 @@ export default function MiPerfil() {
     setErrorMsg(null);
 
     try {
-      // 1. Payload limpio: Solo enviamos lo que sí es editable y existe
+      // 1. Payload limpio: Incluimos los nuevos campos
       const payload = {
         telefono: editForm.telefono,
         genero: editForm.genero,
         instagram_url: editForm.instagram_url,
         facebook_url: editForm.facebook_url,
-        avatar_url: editForm.avatar
+        avatar_url: editForm.avatar,
+        titulo_oficio: editForm.titulo_oficio,
+        experiencia: editForm.experiencia,
+        biografia: editForm.biografia
       };
 
       // 2. Disparamos la petición
       await updateUserProfile(payload, token);
 
-      // 3. Actualizamos la vista visualmente
+      // 3. Actualizamos la vista
       setUserProfile((prev) => ({
         ...prev,
         ...editForm,
@@ -99,7 +104,6 @@ export default function MiPerfil() {
     }
   };
 
-  // Helper para el nombre completo concatenado
   const fullName = `${userProfile.nombres || ''} ${userProfile.primer_apellido || ''} ${userProfile.segundo_apellido || ''}`.trim();
 
   // Mock de servicios
@@ -123,7 +127,7 @@ export default function MiPerfil() {
             <img src={userProfile.avatar} alt={fullName} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
             <div className="pb-1">
               <h1 className="text-2xl font-bold text-slate-900">{fullName}</h1>
-              <p className="text-slate-500 text-sm">{userProfile.title} · {userProfile.location}</p>
+              <p className="text-slate-500 text-sm font-medium text-orange-600">{userProfile.titulo_oficio} · <span className="text-slate-500">{userProfile.location}</span></p>
             </div>
           </div>
           <button onClick={() => { setEditForm(userProfile); setShowEditProfileModal(true); }} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white hover:bg-slate-50 cursor-pointer shadow-sm">
@@ -139,6 +143,7 @@ export default function MiPerfil() {
               <div className="space-y-3 text-sm text-slate-600">
                 <div className="flex items-center gap-3"><span>📧</span> <span className="truncate">{userProfile.email}</span></div>
                 <div className="flex items-center gap-3"><span>📞</span> {userProfile.telefono || 'Sin teléfono'}</div>
+                <div className="flex items-center gap-3"><span>🏗️</span> Experiencia: {userProfile.experiencia}</div>
                 <div className="flex items-center gap-3"><span>👤</span> Género: {userProfile.genero === 'M' ? 'Masculino' : userProfile.genero === 'F' ? 'Femenino' : userProfile.genero === 'O' ? 'Otro' : 'No especificado'}</div>
                 {userProfile.instagram_url && <div className="flex items-center gap-3"><span>📸</span> <a href={userProfile.instagram_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Instagram</a></div>}
                 {userProfile.facebook_url && <div className="flex items-center gap-3"><span>📘</span> <a href={userProfile.facebook_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Facebook</a></div>}
@@ -149,11 +154,9 @@ export default function MiPerfil() {
           {/* COLUMNA DERECHA */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción (Demo)</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">{userProfile.bio}</p>
+              <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción profesional</h3>
+              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.biografia}</p>
             </div>
-
-            {/* Aquí iría la sección de servicios/publicaciones mockeadas */}
           </div>
         </div>
       </div>
@@ -169,7 +172,6 @@ export default function MiPerfil() {
             <form onSubmit={handleSaveProfile} className="space-y-4">
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* CAMPOS BLOQUEADOS (Nombre y Correo) */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre completo (Verificado)</label>
                   <input type="text" value={fullName} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium" />
@@ -177,6 +179,18 @@ export default function MiPerfil() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico (Verificado)</label>
                   <input type="email" value={editForm.email} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium" />
+                </div>
+              </div>
+
+              {/* CAMPOS PROFESIONALES NUEVOS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Título u Oficio</label>
+                  <input type="text" value={editForm.titulo_oficio} onChange={e => setEditForm({ ...editForm, titulo_oficio: e.target.value })} placeholder="Ej: Gasfíter Certificado" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Años de experiencia</label>
+                  <input type="text" value={editForm.experiencia} onChange={e => setEditForm({ ...editForm, experiencia: e.target.value })} placeholder="Ej: 5 años" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all" />
                 </div>
               </div>
 
@@ -208,9 +222,15 @@ export default function MiPerfil() {
                 </div>
               </div>
 
+              {/* BIOGRAFÍA */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Biografía / Descripción</label>
+                <textarea rows={4} value={editForm.biografia} onChange={e => setEditForm({ ...editForm, biografia: e.target.value })} placeholder="Cuéntale a tus clientes sobre ti y tu forma de trabajar..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all resize-none" />
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold transition-all hover:opacity-95 shadow-md disabled:opacity-70 disabled:cursor-not-allowed" style={{ background: '#F97316' }}>
-                  {isSaving ? 'Guardando en la BD...' : 'Guardar cambios'}
+                  {isSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
                 <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
                   Cancelar
