@@ -118,7 +118,7 @@ export const obtenerPerfil = async (req, res) => {
     // ==========================================
 
     const resultado = await pool.query(
-      `SELECT id, rut, nombres, primer_apellido, segundo_apellido, genero, email, telefono, rol, avatar_url, comuna_id, villa_poblacion_id, ultima_conexion, instagram_url, facebook_url, is_active, strikes, created_at 
+      `SELECT id, rut, nombres, primer_apellido, segundo_apellido, genero, email, telefono, rol, avatar_url, comuna_id, villa_poblacion_id, ultima_conexion, instagram_url, facebook_url, titulo_oficio, experiencia, biografia, is_active, strikes, created_at 
        FROM auth.usuarios 
        WHERE id = $1`,
       [usuarioId]
@@ -143,51 +143,26 @@ export const actualizarPerfil = async (req, res) => {
   try {
     const usuarioId = req.usuario.id;
     const {
-      nombres,
-      primer_apellido,
-      segundo_apellido,
-      genero,
-      telefono,
-      avatar_url,
-      comuna_id,
-      villa_poblacion_id,
-      instagram_url,
-      facebook_url
+      telefono, genero, avatar_url, instagram_url, facebook_url,
+      titulo_oficio, experiencia, biografia
     } = req.body;
 
-    // ==========================================
-    // ACTUALIZACIÓN PARCIAL CON COALESCE (PUT)
-    // ==========================================
     const query = `
       UPDATE auth.usuarios 
       SET 
-        nombres = COALESCE($1, nombres),
-        primer_apellido = COALESCE($2, primer_apellido),
-        segundo_apellido = COALESCE($3, segundo_apellido),
-        genero = COALESCE($4, genero),
-        telefono = COALESCE($5, telefono),
-        avatar_url = COALESCE($6, avatar_url),
-        comuna_id = COALESCE($7, comuna_id),
-        villa_poblacion_id = COALESCE($8, villa_poblacion_id),
-        instagram_url = COALESCE($9, instagram_url),
-        facebook_url = COALESCE($10, facebook_url)
-      WHERE id = $11
-      RETURNING id, rut, nombres, primer_apellido, segundo_apellido, genero, email, telefono, rol, avatar_url, comuna_id, villa_poblacion_id, instagram_url, facebook_url, created_at;
+        telefono = COALESCE($1, telefono),
+        genero = COALESCE($2, genero),
+        avatar_url = COALESCE($3, avatar_url),
+        instagram_url = COALESCE($4, instagram_url),
+        facebook_url = COALESCE($5, facebook_url),
+        titulo_oficio = COALESCE($6, titulo_oficio),
+        experiencia = COALESCE($7, experiencia),
+        biografia = COALESCE($8, biografia)
+      WHERE id = $9
+      RETURNING id, rut, nombres, primer_apellido, segundo_apellido, email, telefono, rol, titulo_oficio, experiencia, biografia;
     `;
 
-    const values = [
-      nombres,
-      primer_apellido,
-      segundo_apellido,
-      genero,
-      telefono,
-      avatar_url,
-      comuna_id,
-      villa_poblacion_id,
-      instagram_url,
-      facebook_url,
-      usuarioId
-    ];
+    const values = [telefono, genero, avatar_url, instagram_url, facebook_url, titulo_oficio, experiencia, biografia, usuarioId];
 
     const resultado = await pool.query(query, values);
 
@@ -195,16 +170,14 @@ export const actualizarPerfil = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    res.json({
-      mensaje: '¡Perfil actualizado exitosamente!',
-      usuario: resultado.rows[0]
-    });
+    res.json({ mensaje: '¡Perfil actualizado exitosamente!', usuario: resultado.rows[0] });
 
   } catch (error) {
     console.error('❌ Error al actualizar el perfil:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
 export const desactivarUsuario = async (req, res) => {
   try {
     // 1. Obtenemos el ID del usuario desde los parámetros de la ruta
