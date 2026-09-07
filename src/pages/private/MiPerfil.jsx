@@ -124,7 +124,6 @@ export default function MiPerfil() {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
-      // Previsualización local temporal en el formulario
       setEditForm({ ...editForm, avatar: URL.createObjectURL(file) });
     }
   };
@@ -134,17 +133,19 @@ export default function MiPerfil() {
     setIsSaving(true);
     setErrorMsg(null);
     try {
-      // 1. Si el usuario seleccionó un archivo nuevo, lo enviamos a Multer/Cloudinary primero
+      let nuevaUrlAvatar = userProfile.avatar;
+
       if (avatarFile) {
-        await uploadUserAvatar(avatarFile, token);
+        const uploadRes = await uploadUserAvatar(avatarFile, token);
+        nuevaUrlAvatar = uploadRes.usuario?.avatar_url || uploadRes.avatar_url || uploadRes.url || nuevaUrlAvatar;
       }
 
-      // 2. Preparamos el payload con los datos de texto (el avatar ya lo procesó Cloudinary en el paso anterior)
       const payload = {
         telefono: editForm.telefono, 
         genero: editForm.genero,
         instagram_url: editForm.instagram_url, 
         facebook_url: editForm.facebook_url,
+        avatar_url: nuevaUrlAvatar,
         titulo_oficio: editForm.titulo_oficio,
         experiencia: editForm.experiencia, 
         biografia: editForm.biografia
@@ -152,12 +153,8 @@ export default function MiPerfil() {
       
       await updateUserProfile(payload, token);
       
-      // 3. Volvemos a consultar la BD para traer la URL de Cloudinary limpia y actualizada
-      const dbData = await getUserProfile(token);
-      const avatarUrlReal = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
-
-      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: avatarUrlReal }));
-      setEditForm((prev) => ({ ...prev, avatar: avatarUrlReal }));
+      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: nuevaUrlAvatar }));
+      setEditForm((prev) => ({ ...prev, avatar: nuevaUrlAvatar }));
       setShowEditProfileModal(false);
       setAvatarFile(null);
     } catch (error) {
