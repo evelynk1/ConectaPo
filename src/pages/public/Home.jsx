@@ -1,17 +1,28 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom' // 1. Importamos el hook de navegación
-import { CATEGORIES, SERVICES } from '../../data/services' 
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { CATEGORIES } from '../../data/services'
 import ServiceCard from '../../components/ServiceCard'
+import { getPublications, normalizePublication } from '../../services/api'
 
 export default function Home() {
   const [search, setSearch] = useState('')
   const [comuna, setComuna] = useState('')
-  const navigate = useNavigate() // 2. Inicializamos el hook
+  const [services, setServices] = useState([])
+  const navigate = useNavigate()
 
-  // Función al enviar el formulario de búsqueda del Hero
+  useEffect(() => {
+    getPublications()
+      .then(publications => setServices(publications.map(normalizePublication)))
+      .catch(() => setServices([]))
+  }, [])
+
   const handleSearch = (e) => {
     e.preventDefault()
-    navigate('/buscar')
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('q', search.trim())
+    if (comuna) params.set('comuna', comuna)
+
+    navigate(`/galeria${params.size ? `?${params.toString()}` : ''}`)
   }
 
   return (
@@ -52,13 +63,12 @@ export default function Home() {
                 <select value={comuna} onChange={e => setComuna(e.target.value)}
                   className="flex-1 bg-transparent text-sm text-slate-600 outline-none cursor-pointer">
                   <option value="">Toda Chile</option>
-                  {['Santiago', 'Providencia', 'Las Condes', 'Maipú', 'Ñuñoa', 'Vitacura', 'La Florida'].map(c => (
+                  {['Santiago', 'Providencia', 'Las Condes', 'Maipú', 'Ñuñoa', 'Vitacura', 'La Florida', 'Valdivia'].map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
 
-              {/* CORREGIDO: Usamos type="submit" para que active handleSearch y nos lleve a /buscar */}
               <button type="submit"
                 className="px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg shrink-0"
                 style={{ background: '#F97316' }}>
@@ -68,18 +78,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      Stats
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[['2.400+', 'Profesionales'], ['15.000+', 'Trabajos realizados'], ['98%', 'Clientes satisfechos'], ['50+', 'Comunas cubiertas']].map(([n, l]) => (
-            <div key={l} className="text-center">
-              <div className="text-2xl font-extrabold text-blue-600" style={{ fontFamily: 'Plus Jakarta Sans' }}>{n}</div>
-              <div className="text-xs text-slate-500 mt-1">{l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Categorias */}
       <section className="max-w-6xl mx-auto px-4 py-16">
@@ -94,7 +92,7 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
           {CATEGORIES.map(({ icon, label }) => (
-            <button key={label} onClick={() => navigate('/buscar')}
+            <button key={label} onClick={() => navigate(`/galeria?categoria=${encodeURIComponent(label)}`)}
               className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group">
               <span className="text-2xl group-hover:scale-110 transition-transform">{icon}</span>
               <span className="text-xs font-medium text-slate-600 text-center leading-tight">{label}</span>
@@ -116,7 +114,7 @@ export default function Home() {
             </button>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SERVICES.slice(0, 3).map(s => (
+            {services.slice(0, 3).map(s => (
               <ServiceCard key={s.id} service={s} />
             ))}
           </div>
