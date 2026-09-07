@@ -173,4 +173,3 @@ export async function uploadUserAvatar(file, token) {
 
   return response.json();
 }
-}
