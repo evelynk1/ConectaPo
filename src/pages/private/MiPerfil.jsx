@@ -1,25 +1,48 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/useUser';
-import { getUserProfile, updateUserProfile, uploadUserAvatar } from '../../services/api';
+import {
+  getUserProfile,
+  updateUserProfile,
+  uploadUserAvatar,
+  obtenerMisPublicaciones,
+  crearPublicacionServicio,
+  guardarHorariosMasivos
+} from '../../services/api';
 
 export default function MiPerfil() {
   const navigate = useNavigate();
-  const { user, token } = useUser();
+  const { token } = useUser();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingService, setIsCreatingService] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showNewServiceModal, setShowNewServiceModal] = useState(false);
+
   const [userProfile, setUserProfile] = useState({});
   const [editForm, setEditForm] = useState({});
   const [avatarFile, setAvatarFile] = useState(null);
+  const [services, setServices] = useState([]);
+
+  const [newServiceForm, setNewServiceForm] = useState({
+    titulo: '',
+    precio_base: '',
+    oficio_id: 1,
+    anos_experiencia: 0,
+    descripcion: '',
+    foto_url_1: '',
+    fecha_inicio: '',
+    hora_inicio: '09:00',
+    hora_fin: '18:00'
+  });
 
   const MAX_BIO_LENGTH = 500;
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndServices = async () => {
       try {
         setIsLoading(true);
         const dbData = await getUserProfile(token);
@@ -44,6 +67,11 @@ export default function MiPerfil() {
 
         setUserProfile(profileData);
         setEditForm(profileData);
+
+        if (dbData.rol === 'PROFESIONAL') {
+          const pubData = await obtenerMisPublicaciones(token);
+          setServices(pubData.publicaciones || []);
+        }
       } catch (error) {
         console.error("Error cargando perfil:", error);
       } finally {
@@ -51,7 +79,7 @@ export default function MiPerfil() {
       }
     };
 
-    if (token) fetchProfile();
+    if (token) fetchProfileAndServices();
   }, [token]);
 
   const handleAvatarChange = (e) => {
@@ -103,6 +131,44 @@ export default function MiPerfil() {
     }
   };
 
+  const handleCreateService = async (e) => {
+    e.preventDefault();
+    setIsCreatingService(true);
+    setErrorMsg(null);
+
+    try {
+      const pubRes = await crearPublicacionServicio({
+        titulo: newServiceForm.titulo,
+        descripcion: newServiceForm.descripcion,
+        precio_base: Number(newServiceForm.precio_base),
+        oficio_id: Number(newServiceForm.oficio_id),
+        anos_experiencia: Number(newServiceForm.anos_experiencia),
+        foto_url_1: newServiceForm.foto_url_1 || null
+      }, token);
+
+      const nuevaPubId = pubRes.publicacion.id;
+
+      if (newServiceForm.fecha_inicio) {
+        const bloqueUnico = {
+          fecha_hora_inicio: `${newServiceForm.fecha_inicio}T${newServiceForm.hora_inicio}:00`,
+          fecha_hora_fin: `${newServiceForm.fecha_inicio}T${newServiceForm.hora_fin}:00`
+        };
+        await guardarHorariosMasivos(nuevaPubId, [bloqueUnico], token);
+      }
+
+      setServices([pubRes.publicacion, ...services]);
+      setShowNewServiceModal(false);
+      setNewServiceForm({
+        titulo: '', precio_base: '', oficio_id: 1, anos_experiencia: 0,
+        descripcion: '', foto_url_1: '', fecha_inicio: '', hora_inicio: '09:00', hora_fin: '18:00'
+      });
+    } catch (error) {
+      setErrorMsg(error.message || 'Error al crear el servicio.');
+    } finally {
+      setIsCreatingService(false);
+    }
+  };
+
   const fullName = `${userProfile.nombres || ''} ${userProfile.primer_apellido || ''} ${userProfile.segundo_apellido || ''}`.trim();
 
   if (isLoading) {
@@ -151,6 +217,50 @@ export default function MiPerfil() {
               <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción profesional</h3>
               <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.biografia || 'Sin descripción aún.'}</p>
             </div>
+
+            {userProfile.rol === 'PROFESIONAL' && (
+              <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
+                    <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
+                  </div>
+                  <button
+                    onClick={() => setShowNewServiceModal(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
+                    style={{ background: '#F97316' }}
+                  >
+                    <span>+</span> Crear servicio
+                  </button>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                  {services.length === 0 ? (
+                    <p className="text-xs text-slate-400 col-span-2 py-4 text-center">Aún no tienes servicios publicados.</p>
+                  ) : (
+                    services.map(pub => (
+                      <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+                        <div className="h-32 w-full overflow-hidden relative bg-slate-100">
+                          <img src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} alt={pub.titulo} className="w-full h-full object-cover" />
+                          <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500 text-white">
+                            {pub.estado || 'ACTIVA'}
+                          </span>
+                        </div>
+                        <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
+                              <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -246,6 +356,120 @@ export default function MiPerfil() {
                   {isSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
                 <button type="button" onClick={() => { setShowEditProfileModal(false); setAvatarFile(null); }} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showNewServiceModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-bold text-slate-900 text-base">Crear Nuevo Servicio y Calendario</h3>
+              <button onClick={() => setShowNewServiceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-xl">{errorMsg}</div>}
+
+            <form onSubmit={handleCreateService} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Título del servicio *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Instalación de Calefont"
+                  value={newServiceForm.titulo}
+                  onChange={e => setNewServiceForm({ ...newServiceForm, titulo: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Precio Base (CLP) *</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="Ej: 30000"
+                    value={newServiceForm.precio_base}
+                    onChange={e => setNewServiceForm({ ...newServiceForm, precio_base: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">ID Oficio *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newServiceForm.oficio_id}
+                    onChange={e => setNewServiceForm({ ...newServiceForm, oficio_id: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción detallada *</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Explica tu servicio..."
+                  value={newServiceForm.descripcion}
+                  onChange={e => setNewServiceForm({ ...newServiceForm, descripcion: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 resize-none"
+                />
+              </div>
+
+              <div className="pt-2 border-t space-y-3">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Disponibilidad Inicial en Calendario</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Fecha</label>
+                    <input
+                      type="date"
+                      value={newServiceForm.fecha_inicio}
+                      onChange={e => setNewServiceForm({ ...newServiceForm, fecha_inicio: e.target.value })}
+                      className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Hora Inicio</label>
+                    <input
+                      type="time"
+                      value={newServiceForm.hora_inicio}
+                      onChange={e => setNewServiceForm({ ...newServiceForm, hora_inicio: e.target.value })}
+                      className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Hora Fin</label>
+                    <input
+                      type="time"
+                      value={newServiceForm.hora_fin}
+                      onChange={e => setNewServiceForm({ ...newServiceForm, hora_fin: e.target.value })}
+                      className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={isCreatingService}
+                  className="flex-1 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md disabled:opacity-70 cursor-pointer"
+                  style={{ background: '#F97316' }}
+                >
+                  {isCreatingService ? 'Guardando...' : 'Publicar servicio'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewServiceModal(false)}
+                  className="px-5 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
                   Cancelar
                 </button>
               </div>

@@ -173,3 +173,42 @@ export async function uploadUserAvatar(file, token) {
 
   return response.json();
 }
+
+export async function guardarHorariosMasivos(publicacionId, bloques, token) {
+  const response = await fetch(`${API_URL}/api/horarios/publicacion/${publicacionId}/masivo`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ bloques })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Error al guardar los horarios.');
+  }
+
+  return response.json();
+}
+
+export async function crearPublicacionServicio(data, token) {
+  const response = await fetch(`${API_URL}/api/publicaciones`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Error al crear la publicación.');
+  }
+  return response.json();
+}
+
+export async function obtenerMisPublicaciones(token) {
+  const response = await fetch(`${API_URL}/api/publicaciones/mis-publicaciones`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Error al obtener tus publicaciones.');
+  return response.json();
+}
