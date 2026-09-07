@@ -82,13 +82,19 @@ export const actualizarPerfil = async (req, res) => {
 // SUBIR AVATAR DE USUARIO
 // ==========================================
 export const subirAvatar = async (req, res) => {
+    console.log("🟢 ENTRÓ A LA RUTA DE SUBIR AVATAR");
+    console.log("HEADERS:", req.headers);
+    console.log("FILE:", req.file);
+    console.log("BODY:", req.body);
+    console.log("USUARIO:", req.usuario);
+
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No se subió ninguna imagen.' });
         }
 
         const usuario_id = req.usuario.id;
-        const avatar_url = req.file.path; // Cloudinary nos devuelve la URL en path
+        const avatar_url = req.file.path;
 
         const updateQuery = `
             UPDATE auth.usuarios 
@@ -104,7 +110,7 @@ export const subirAvatar = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Error al subir avatar:', error);
-        res.status(500).json({ error: 'Error interno al guardar la foto.' });
+        console.error('❌ ERROR FATAL EN SUBIR AVATAR:', error);
+        res.status(500).json({ error: 'Error interno: ' + error.message });
     }
 };
