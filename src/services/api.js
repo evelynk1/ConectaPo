@@ -159,7 +159,7 @@ export async function uploadUserAvatar(file, token) {
   formData.append('avatar', file);
 
   const response = await fetch(`${API_URL}/api/usuarios/avatar`, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`
     },
@@ -172,4 +172,5 @@ export async function uploadUserAvatar(file, token) {
   }
 
   return response.json();
+}
 }
