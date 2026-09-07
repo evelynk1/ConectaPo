@@ -34,22 +34,27 @@ export default function MiPerfil() {
   const [services, setServices] = useState([]);
   const [oficios, setOficios] = useState([]);
 
-  // Formulario de Creación (con 3 fotos)
+  // Formulario de Creación
   const [newServiceForm, setNewServiceForm] = useState({
     titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
     descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
   });
 
-  // Formulario de Edición (con 3 fotos)
+  // Formulario de Edición (con fotos y calendario)
   const [editServiceForm, setEditServiceForm] = useState({
     id: null, titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
-    descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
+    descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '', es_horario_conversable: false
   });
 
-  // Calendario
+  // Calendario para Creación
   const [isConversable, setIsConversable] = useState(false);
   const [scheduleRange, setScheduleRange] = useState({ start: '', end: '' });
   const [generatedBlocks, setGeneratedBlocks] = useState([]);
+
+  // Calendario para Edición
+  const [editIsConversable, setEditIsConversable] = useState(false);
+  const [editScheduleRange, setEditScheduleRange] = useState({ start: '', end: '' });
+  const [editGeneratedBlocks, setEditGeneratedBlocks] = useState([]);
 
   const MAX_BIO_LENGTH = 500;
 
@@ -63,7 +68,7 @@ export default function MiPerfil() {
         const dbData = await getUserProfile(token);
         const avatarUrl = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
 
-        setUserProfile({
+        const fullProfile = {
           nombres: dbData.nombres || '',
           primer_apellido: dbData.primer_apellido || '',
           segundo_apellido: dbData.segundo_apellido || '',
@@ -79,24 +84,10 @@ export default function MiPerfil() {
           biografia: dbData.biografia || '',
           location: 'Chile',
           skills: 'Aún no registradas'
-        });
-        setEditForm({
-          nombres: dbData.nombres || '',
-          primer_apellido: dbData.primer_apellido || '',
-          segundo_apellido: dbData.segundo_apellido || '',
-          email: dbData.email || '',
-          telefono: dbData.telefono || '',
-          genero: dbData.genero || '',
-          instagram_url: dbData.instagram_url || '',
-          facebook_url: dbData.facebook_url || '',
-          avatar: avatarUrl,
-          rol: dbData.rol,
-          titulo_oficio: dbData.titulo_oficio || 'Profesional independiente',
-          experiencia: dbData.experiencia || 'Aún sin información',
-          biografia: dbData.biografia || '',
-          location: 'Chile',
-          skills: 'Aún no registradas'
-        });
+        };
+
+        setUserProfile(fullProfile);
+        setEditForm(fullProfile);
 
         const pubData = await obtenerMisPublicaciones(token);
         const pubsConEstado = (pubData.publicaciones || []).map(p => ({ ...p, estado: p.estado || 'ACTIVA' }));
@@ -132,10 +123,14 @@ export default function MiPerfil() {
         finalAvatarUrl = uploadRes.usuario?.avatar_url || uploadRes.avatar_url || editForm.avatar;
       }
       const payload = {
-        telefono: editForm.telefono, genero: editForm.genero,
-        instagram_url: editForm.instagram_url, facebook_url: editForm.facebook_url,
-        avatar_url: finalAvatarUrl, titulo_oficio: editForm.titulo_oficio,
-        experiencia: editForm.experiencia, biografia: editForm.biografia
+        telefono: editForm.telefono, 
+        genero: editForm.genero,
+        instagram_url: editForm.instagram_url, 
+        facebook_url: editForm.facebook_url,
+        avatar_url: finalAvatarUrl, 
+        titulo_oficio: editForm.titulo_oficio,
+        experiencia: editForm.experiencia, 
+        biografia: editForm.biografia
       };
       await updateUserProfile(payload, token);
       setUserProfile((prev) => ({ ...prev, ...editForm, avatar: finalAvatarUrl }));
@@ -148,7 +143,7 @@ export default function MiPerfil() {
     }
   };
 
-  // --- LÓGICA DE FOTOS (CREACIÓN Y EDICIÓN) ---
+  // --- LÓGICA DE FOTOS ---
   const handlePhotoChange = (formType, num, e) => {
     const file = e.target.files[0];
     if (file) {
@@ -169,7 +164,7 @@ export default function MiPerfil() {
     }
   };
 
-  // --- LÓGICA DE CALENDARIO ---
+  // --- LÓGICA DE CALENDARIO (CREACIÓN) ---
   const handleGenerateBlocks = () => {
     if (!scheduleRange.start) { alert("Selecciona al menos la fecha de inicio."); return; }
     const startDate = new Date(scheduleRange.start + "T00:00:00");
@@ -191,6 +186,33 @@ export default function MiPerfil() {
   };
   const removeBlock = (id_temporal) => setGeneratedBlocks(prev => prev.filter(b => b.id_temporal !== id_temporal));
   const blocksByDate = generatedBlocks.reduce((acc, block) => {
+    if (!acc[block.fecha_visual]) acc[block.fecha_visual] = [];
+    acc[block.fecha_visual].push(block);
+    return acc;
+  }, {});
+
+  // --- LÓGICA DE CALENDARIO (EDICIÓN) ---
+  const handleEditGenerateBlocks = () => {
+    if (!editScheduleRange.start) { alert("Selecciona al menos la fecha de inicio."); return; }
+    const startDate = new Date(editScheduleRange.start + "T00:00:00");
+    const endDate = editScheduleRange.end ? new Date(editScheduleRange.end + "T00:00:00") : new Date(startDate);
+    if (startDate > endDate) { alert("La fecha de fin no puede ser menor a la de inicio."); return; }
+    let current = new Date(startDate);
+    const newBlocks = [];
+    while (current <= endDate) {
+      const dateStr = current.toISOString().split('T')[0];
+      for (let i = 8; i < 17; i++) {
+        newBlocks.push({
+          id_temporal: `${dateStr}-${i}`, fecha: dateStr, fecha_visual: current.toLocaleDateString('es-CL'),
+          hora_inicio: `${String(i).padStart(2, '0')}:00`, hora_fin: `${String(i+1).padStart(2, '0')}:00`
+        });
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    setEditGeneratedBlocks(newBlocks);
+  };
+  const removeEditBlock = (id_temporal) => setEditGeneratedBlocks(prev => prev.filter(b => b.id_temporal !== id_temporal));
+  const editBlocksByDate = editGeneratedBlocks.reduce((acc, block) => {
     if (!acc[block.fecha_visual]) acc[block.fecha_visual] = [];
     acc[block.fecha_visual].push(block);
     return acc;
@@ -240,8 +262,12 @@ export default function MiPerfil() {
       descripcion: pub.descripcion,
       foto_url_1: pub.foto_url_1 || '',
       foto_url_2: pub.foto_url_2 || '',
-      foto_url_3: pub.foto_url_3 || ''
+      foto_url_3: pub.foto_url_3 || '',
+      es_horario_conversable: pub.es_horario_conversable || false
     });
+    setEditIsConversable(pub.es_horario_conversable || false);
+    setEditGeneratedBlocks([]);
+    setEditScheduleRange({ start: '', end: '' });
     setShowEditServiceModal(true);
   };
 
@@ -256,10 +282,19 @@ export default function MiPerfil() {
         precio_base: Number(editServiceForm.precio_base),
         oficio_id: Number(editServiceForm.oficio_id),
         anos_experiencia: Number(editServiceForm.anos_experiencia),
+        es_horario_conversable: editIsConversable,
         foto_url_1: editServiceForm.foto_url_1 || null,
         foto_url_2: editServiceForm.foto_url_2 || null,
         foto_url_3: editServiceForm.foto_url_3 || null
       }, token);
+
+      // Si generó nuevos bloques en la edición, también los guardamos
+      if (!editIsConversable && editGeneratedBlocks.length > 0) {
+        const bloquesFormateados = editGeneratedBlocks.map(b => ({
+          fecha_hora_inicio: `${b.fecha}T${b.hora_inicio}:00`, fecha_hora_fin: `${b.fecha}T${b.hora_fin}:00`
+        }));
+        await guardarHorariosMasivos(editServiceForm.id, bloquesFormateados, token);
+      }
 
       setServices(services.map(s => s.id === editServiceForm.id ? { ...s, ...updatedPub.publicacion } : s));
       setShowEditServiceModal(false);
@@ -270,7 +305,7 @@ export default function MiPerfil() {
     }
   };
 
-  // --- PAUSAR Y ELIMINAR (SOFT DELETE) ---
+  // --- PAUSAR Y ELIMINAR ---
   const toggleServiceStatus = async (pub) => {
     const nuevoEstado = pub.estado === 'ACTIVA' ? 'PAUSADA' : 'ACTIVA';
     try {
@@ -296,6 +331,8 @@ export default function MiPerfil() {
   const bioLength = editForm.biografia?.length || 0;
   const charsLeft = MAX_BIO_LENGTH - bioLength;
   const isCloseToLimit = charsLeft <= 20;
+
+  const editBioLength = editForm.biografia?.length || 0;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
@@ -374,7 +411,7 @@ export default function MiPerfil() {
                             <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
                           </div>
                           
-                          {/* BOTONES DE ACCIÓN: EDITAR, PAUSAR/ACTIVAR, ELIMINAR */}
+                          {/* BOTONES DE ACCIÓN */}
                           <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
                             <button 
                               onClick={() => openEditModal(pub)}
@@ -409,12 +446,13 @@ export default function MiPerfil() {
 
       {/* ================= MODALES ================= */}
       
-      {/* 1. MODAL EDITAR PERFIL */}
+      {/* 1. MODAL EDITAR PERFIL (CON TODOS LOS CAMPOS ORIGINALES) */}
       {showEditProfileModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
             <h3 className="font-bold text-slate-900 mb-4 border-b pb-2">Editar Información del Perfil</h3>
             {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{errorMsg}</div>}
+            
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2">Foto de perfil</label>
@@ -423,36 +461,65 @@ export default function MiPerfil() {
                   <input type="file" accept="image/*" onChange={handleAvatarChange} className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer" />
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre completo (Verificado)</label>
+                  <input type="text" value={fullName} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium text-xs" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico (Verificado)</label>
+                  <input type="email" value={editForm.email} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium text-xs" />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Título u Oficio</label>
-                  <input type="text" value={editForm.titulo_oficio} onChange={e => setEditForm({ ...editForm, titulo_oficio: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500" />
+                  <input type="text" value={editForm.titulo_oficio} onChange={e => setEditForm({ ...editForm, titulo_oficio: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Años de experiencia</label>
-                  <input type="text" value={editForm.experiencia} onChange={e => setEditForm({ ...editForm, experiencia: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500" />
+                  <input type="text" value={editForm.experiencia} onChange={e => setEditForm({ ...editForm, experiencia: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
                 </div>
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono</label>
-                  <input type="text" value={editForm.telefono} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500" />
+                  <input type="text" value={editForm.telefono} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Género</label>
-                  <select value={editForm.genero} onChange={e => setEditForm({ ...editForm, genero: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-orange-500 bg-white">
-                    <option value="">Prefiero no decirlo</option><option value="M">Masculino</option><option value="F">Femenino</option>
+                  <select value={editForm.genero} onChange={e => setEditForm({ ...editForm, genero: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500 bg-white">
+                    <option value="">Prefiero no decirlo</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                    <option value="O">Otro</option>
                   </select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Instagram (URL)</label>
+                  <input type="url" value={editForm.instagram_url} onChange={e => setEditForm({ ...editForm, instagram_url: e.target.value })} placeholder="https://instagram.com/..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Facebook (URL)</label>
+                  <input type="url" value={editForm.facebook_url} onChange={e => setEditForm({ ...editForm, facebook_url: e.target.value })} placeholder="https://facebook.com/..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Biografía / Descripción</label>
-                <textarea rows={4} maxLength={MAX_BIO_LENGTH} value={editForm.biografia} onChange={e => setEditForm({ ...editForm, biografia: e.target.value })} className={`w-full px-3.5 py-2.5 rounded-xl border outline-none resize-none ${isCloseToLimit ? 'border-red-300' : 'border-slate-200 focus:border-orange-500'}`} />
+                <textarea rows={4} maxLength={MAX_BIO_LENGTH} value={editForm.biografia} onChange={e => setEditForm({ ...editForm, biografia: e.target.value })} className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none resize-none ${isCloseToLimit ? 'border-red-300' : 'border-slate-200 focus:border-orange-500'}`} />
                 <div className={`text-right text-[10px] mt-1 font-semibold ${isCloseToLimit ? 'text-red-500' : 'text-slate-400'}`}>{bioLength} / {MAX_BIO_LENGTH}</div>
               </div>
+
               <div className="flex gap-3 pt-4">
-                <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold transition-all hover:opacity-95 shadow-md disabled:opacity-70" style={{ background: '#F97316' }}>{isSaving ? 'Guardando...' : 'Guardar cambios'}</button>
-                <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold text-xs transition-all hover:opacity-95 shadow-md disabled:opacity-70" style={{ background: '#F97316' }}>{isSaving ? 'Guardando...' : 'Guardar cambios'}</button>
+                <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
               </div>
             </form>
           </div>
@@ -595,12 +662,12 @@ export default function MiPerfil() {
         </div>
       )}
 
-      {/* 3. MODAL EDITAR SERVICIO (CON 3 FOTOS) */}
+      {/* 3. MODAL EDITAR SERVICIO (CON 3 FOTOS Y CALENDARIO INTEGRADO) */}
       {showEditServiceModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
             <div className="flex items-center justify-between border-b pb-3 mb-2">
-              <h3 className="font-bold text-slate-900 text-base">Editar Servicio</h3>
+              <h3 className="font-bold text-slate-900 text-base">Editar Servicio y Calendario</h3>
               <button onClick={() => setShowEditServiceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-xs cursor-pointer">✕</button>
             </div>
             
@@ -651,10 +718,70 @@ export default function MiPerfil() {
                   ))}
                 </div>
               </div>
+
+              {/* CALENDARIO EN EDICIÓN */}
+              <div className="pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-slate-900 text-sm">📅 Modificar Calendario / Disponibilidad</h4>
+                  <label className="flex items-center cursor-pointer">
+                    <div className="relative">
+                      <input type="checkbox" className="sr-only" checked={editIsConversable} onChange={() => setEditIsConversable(!editIsConversable)} />
+                      <div className={`block w-10 h-6 rounded-full transition-colors ${editIsConversable ? 'bg-orange-500' : 'bg-slate-300'}`}></div>
+                      <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${editIsConversable ? 'transform translate-x-4' : ''}`}></div>
+                    </div>
+                    <div className="ml-3 text-xs font-semibold text-slate-700">Trabajo a convenir</div>
+                  </label>
+                </div>
+
+                {editIsConversable ? (
+                  <div className="bg-slate-50 border-2 border-dashed border-slate-300 p-4 rounded-2xl text-center">
+                    <h5 className="text-sm font-bold text-slate-700 mb-1">🤝 Modalidad: Horario a Convenir</h5>
+                    <p className="text-xs text-slate-500 mb-0">Al activar esto, los clientes se contactarán directamente para acordar la fecha.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3">
+                      <h6 className="mb-2 text-xs font-bold text-slate-800">🗓️ Agregar Nuevos Bloques de Horarios</h6>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">Desde</label>
+                          <input type="date" value={editScheduleRange.start} onChange={e => setEditScheduleRange({...editScheduleRange, start: e.target.value})} className="w-full px-2 py-1.5 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">Hasta</label>
+                          <input type="date" value={editScheduleRange.end} onChange={e => setEditScheduleRange({...editScheduleRange, end: e.target.value})} className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                        <button type="button" onClick={handleEditGenerateBlocks} className="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm">⚡ Generar</button>
+                      </div>
+                    </div>
+
+                    {editGeneratedBlocks.length > 0 && (
+                      <div className="border border-slate-100 rounded-2xl p-3 bg-white max-h-48 overflow-y-auto">
+                        <h6 className="text-xs font-bold text-slate-800 border-b pb-1 mb-2">Bloques listos para guardar:</h6>
+                        <div className="space-y-3">
+                          {Object.keys(editBlocksByDate).map(dateStr => (
+                            <div key={dateStr}>
+                              <div className="bg-slate-800 text-white px-2 py-1 rounded text-[11px] font-bold mb-1">📅 {dateStr}</div>
+                              <div className="space-y-1 pl-2">
+                                {editBlocksByDate[dateStr].map(block => (
+                                  <div key={block.id_temporal} className="flex justify-between items-center p-2 border border-emerald-200 bg-emerald-50/30 rounded-lg">
+                                    <span className="text-xs font-bold">{block.hora_inicio} - {block.hora_fin}</span>
+                                    <button type="button" onClick={() => removeEditBlock(block.id_temporal)} className="text-[10px] text-red-600 font-semibold px-2 py-0.5">Quitar</button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               
               <div className="flex gap-3 pt-4 border-t border-slate-100">
                 <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold text-sm shadow-md" style={{ background: '#F97316' }}>
-                  {isSaving ? 'Guardando...' : 'Actualizar servicio'}
+                  {isSaving ? 'Guardando...' : 'Actualizar servicio y calendario'}
                 </button>
                 <button type="button" onClick={() => setShowEditServiceModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
               </div>
