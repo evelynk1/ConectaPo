@@ -275,3 +275,26 @@ export async function eliminarPublicacionServicio(id, token) {
 
   return response.json();
 }
+
+// Obtener los bloques horarios de una publicación específica
+export async function obtenerBloquesHorarios(publicacionId, token) {
+  const response = await fetch(`${API_URL}/api/bloques-horarios/${publicacionId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!response.ok) throw new Error('Error al obtener los bloques horarios.');
+  return response.json();
+}
+
+// Eliminar un bloque horario individual
+export async function eliminarBloqueHorario(bloqueId, token) {
+  const response = await fetch(`${API_URL}/api/bloques-horarios/${bloqueId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!response.ok) throw new Error('Error al eliminar el bloque horario.');
+  return response.json();
+}
