@@ -124,7 +124,7 @@ export default function MiPerfil() {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
-      setEditForm({ ...editForm, avatar: URL.createObjectURL(file) });
+      setEditForm({ ...editForm, avatar: URL.createObjectURL(file) }); // Solo para previsualizar
     }
   };
 
@@ -133,23 +133,37 @@ export default function MiPerfil() {
     setIsSaving(true);
     setErrorMsg(null);
     try {
-      let finalAvatarUrl = editForm.avatar;
+      // 1. Iniciamos con la foto ORIGINAL que venía de la BD
+      let finalAvatarUrl = userProfile.avatar; 
+
+      // 2. Si el usuario eligió una foto nueva, la subimos
       if (avatarFile) {
         const uploadRes = await uploadUserAvatar(avatarFile, token);
-        finalAvatarUrl = uploadRes.usuario?.avatar_url || uploadRes.avatar_url || editForm.avatar;
+        // Extraemos la URL real del backend (agregamos uploadRes.url por si acaso)
+        finalAvatarUrl = uploadRes.usuario?.avatar_url || uploadRes.avatar_url || uploadRes.url || finalAvatarUrl;
       }
+
+      // 3. 🛡️ ESCUDO ANTI-BLOB: Si por alguna razón intenta colarse el blob, lo bloqueamos
+      if (finalAvatarUrl && finalAvatarUrl.startsWith('blob:')) {
+        finalAvatarUrl = userProfile.avatar; 
+      }
+
       const payload = {
         telefono: editForm.telefono, 
         genero: editForm.genero,
         instagram_url: editForm.instagram_url, 
         facebook_url: editForm.facebook_url,
-        avatar_url: finalAvatarUrl, 
+        avatar_url: finalAvatarUrl, // Enviamos la URL limpia y real
         titulo_oficio: editForm.titulo_oficio,
         experiencia: editForm.experiencia, 
         biografia: editForm.biografia
       };
+      
       await updateUserProfile(payload, token);
+      
+      // Actualizamos el estado de la vista con la URL limpia
       setUserProfile((prev) => ({ ...prev, ...editForm, avatar: finalAvatarUrl }));
+      setEditForm((prev) => ({ ...prev, avatar: finalAvatarUrl }));
       setShowEditProfileModal(false);
       setAvatarFile(null);
     } catch (error) {
