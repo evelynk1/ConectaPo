@@ -10,54 +10,66 @@ import {
   actualizarPublicacionServicio,
   eliminarPublicacionServicio,
   guardarHorariosMasivos,
-  obtenerOficios
+  obtenerOficios,
+  obtenerBloquesHorarios,     // <-- Añadido para evitar crash
+  eliminarBloqueHorario        // <-- Añadido para evitar crash
 } from '../../services/api';
 
 export default function MiPerfil() {
   const navigate = useNavigate();
   const { token } = useUser();
 
+  // ==========================================
+  // ESTADOS GENERALES Y DE CONTROL
+  // ==========================================
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingService, setIsCreatingService] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Modales
+  // Control de Modales
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showNewServiceModal, setShowNewServiceModal] = useState(false);
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
 
-  // Datos principales
+  // ==========================================
+  // ESTADOS DE DATOS (PERFIL Y SERVICIOS)
+  // ==========================================
   const [userProfile, setUserProfile] = useState({});
   const [editForm, setEditForm] = useState({});
   const [avatarFile, setAvatarFile] = useState(null);
   const [services, setServices] = useState([]);
   const [oficios, setOficios] = useState([]);
 
-  // Formulario de Creación
+  // Formulario para Crear un Servicio
   const [newServiceForm, setNewServiceForm] = useState({
     titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
     descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
   });
 
-  // Formulario de Edición (con fotos y calendario)
+  // Formulario para Editar un Servicio
   const [editServiceForm, setEditServiceForm] = useState({
     id: null, titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
     descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '', es_horario_conversable: false
   });
 
-  // Calendario para Creación
+  // ==========================================
+  // ESTADOS DE CALENDARIO (CREACIÓN Y EDICIÓN)
+  // ==========================================
   const [isConversable, setIsConversable] = useState(false);
   const [scheduleRange, setScheduleRange] = useState({ start: '', end: '' });
   const [generatedBlocks, setGeneratedBlocks] = useState([]);
 
-  // Calendario para Edición
   const [editIsConversable, setEditIsConversable] = useState(false);
   const [editScheduleRange, setEditScheduleRange] = useState({ start: '', end: '' });
   const [editGeneratedBlocks, setEditGeneratedBlocks] = useState([]);
+  const [existingBlocks, setExistingBlocks] = useState([]);
 
   const MAX_BIO_LENGTH = 500;
 
+  // ==========================================
+  // EFECTO INICIAL: CARGAR PERFIL Y SERVICIOS
+  // ==========================================
   useEffect(() => {
     const fetchAllData = async () => {
       try {
@@ -103,7 +115,9 @@ export default function MiPerfil() {
     if (token) fetchAllData();
   }, [token]);
 
-  // --- LÓGICA DE PERFIL ---
+  // ==========================================
+  // LÓGICA DE ACTUALIZACIÓN DE PERFIL
+  // ==========================================
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -143,7 +157,9 @@ export default function MiPerfil() {
     }
   };
 
-  // --- LÓGICA DE FOTOS ---
+  // ==========================================
+  // LÓGICA DE FOTOS PARA SERVICIOS
+  // ==========================================
   const handlePhotoChange = (formType, num, e) => {
     const file = e.target.files[0];
     if (file) {
@@ -164,7 +180,9 @@ export default function MiPerfil() {
     }
   };
 
-  // --- LÓGICA DE CALENDARIO (CREACIÓN) ---
+  // ==========================================
+  // LÓGICA DE CALENDARIO (CREACIÓN)
+  // ==========================================
   const handleGenerateBlocks = () => {
     if (!scheduleRange.start) { alert("Selecciona al menos la fecha de inicio."); return; }
     const startDate = new Date(scheduleRange.start + "T00:00:00");
@@ -191,7 +209,9 @@ export default function MiPerfil() {
     return acc;
   }, {});
 
-  // --- LÓGICA DE CALENDARIO (EDICIÓN) ---
+  // ==========================================
+  // LÓGICA DE CALENDARIO (EDICIÓN)
+  // ==========================================
   const handleEditGenerateBlocks = () => {
     if (!editScheduleRange.start) { alert("Selecciona al menos la fecha de inicio."); return; }
     const startDate = new Date(editScheduleRange.start + "T00:00:00");
@@ -218,7 +238,9 @@ export default function MiPerfil() {
     return acc;
   }, {});
 
-  // --- CREAR SERVICIO ---
+  // ==========================================
+  // GESTIÓN DE SERVICIOS (CREAR, EDITAR, PAUSAR, ELIMINAR)
+  // ==========================================
   const handleCreateService = async (e) => {
     e.preventDefault();
     setIsCreatingService(true);
@@ -251,11 +273,6 @@ export default function MiPerfil() {
     }
   };
 
-  // --- EDITAR SERVICIO ---
-  // --- ESTADOS NUEVOS PARA BLOQUES EXISTENTES ---
-  const [existingBlocks, setExistingBlocks] = useState([]);
-
-  // --- ABRIR MODAL DE EDICIÓN CARGANDO FOTOS Y BLOQUES ---
   const openEditModal = async (pub) => {
     setEditServiceForm({
       id: pub.id,
@@ -273,19 +290,17 @@ export default function MiPerfil() {
     setEditGeneratedBlocks([]);
     setEditScheduleRange({ start: '', end: '' });
 
-    // Cargar bloques existentes de la BD
     try {
       const resBloques = await obtenerBloquesHorarios(pub.id);
       setExistingBlocks(resBloques.bloques || []);
     } catch (err) {
-      console.error("Error al cargar bloques de la publicación", err);
+      console.error("Error al cargar bloques:", err);
       setExistingBlocks([]);
     }
 
     setShowEditServiceModal(true);
   };
 
-  // --- ELIMINAR UN BLOQUE EXISTENTE DE LA BD ---
   const handleDeleteExistingBlock = async (bloqueId) => {
     try {
       await eliminarBloqueHorario(bloqueId, token);
@@ -295,7 +310,39 @@ export default function MiPerfil() {
     }
   };
 
-  // --- PAUSAR Y ELIMINAR ---
+  const handleUpdateService = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setErrorMsg(null);
+    try {
+      const updatedPub = await actualizarPublicacionServicio(editServiceForm.id, {
+        titulo: editServiceForm.titulo,
+        descripcion: editServiceForm.descripcion,
+        precio_base: Number(editServiceForm.precio_base),
+        oficio_id: Number(editServiceForm.oficio_id),
+        anos_experiencia: Number(editServiceForm.anos_experiencia),
+        es_horario_conversable: editIsConversable,
+        foto_url_1: editServiceForm.foto_url_1 || null,
+        foto_url_2: editServiceForm.foto_url_2 || null,
+        foto_url_3: editServiceForm.foto_url_3 || null
+      }, token);
+
+      if (!editIsConversable && editGeneratedBlocks.length > 0) {
+        const bloquesFormateados = editGeneratedBlocks.map(b => ({
+          fecha_hora_inicio: `${b.fecha}T${b.hora_inicio}:00`, fecha_hora_fin: `${b.fecha}T${b.hora_fin}:00`
+        }));
+        await guardarHorariosMasivos(editServiceForm.id, bloquesFormateados, token);
+      }
+
+      setServices(services.map(s => s.id === editServiceForm.id ? { ...s, ...updatedPub.publicacion } : s));
+      setShowEditServiceModal(false);
+    } catch (error) {
+      setErrorMsg(error.message || 'Error al actualizar el servicio.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const toggleServiceStatus = async (pub) => {
     const nuevoEstado = pub.estado === 'ACTIVA' ? 'PAUSADA' : 'ACTIVA';
     try {
@@ -316,19 +363,22 @@ export default function MiPerfil() {
     }
   };
 
+  // ==========================================
+  // RENDERIZADO PRINCIPAL Y VISTAS
+  // ==========================================
   const fullName = `${userProfile.nombres || ''} ${userProfile.primer_apellido || ''} ${userProfile.segundo_apellido || ''}`.trim();
   if (isLoading) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Cargando tu perfil desde el servidor...</div>;
   const bioLength = editForm.biografia?.length || 0;
   const charsLeft = MAX_BIO_LENGTH - bioLength;
   const isCloseToLimit = charsLeft <= 20;
 
-  const editBioLength = editForm.biografia?.length || 0;
-
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
+      {/* Banner Superior */}
       <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }} />
 
       <div className="max-w-5xl mx-auto px-6">
+        {/* Cabecera del Perfil con Avatar y Datos */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 mb-8 relative z-10">
           <div className="flex items-end gap-5">
             <img src={userProfile.avatar} alt={fullName} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
@@ -343,6 +393,7 @@ export default function MiPerfil() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Columna Izquierda: Contacto */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-4">Información de contacto</h3>
@@ -357,13 +408,14 @@ export default function MiPerfil() {
             </div>
           </div>
 
+          {/* Columna Derecha: Biografía y Servicios */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción profesional</h3>
               <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.biografia || 'Sin descripción aún.'}</p>
             </div>
 
-            {/* Panel de Publicaciones */}
+            {/* Listado de Publicaciones */}
             {(userProfile.rol === 'PROFESIONAL' || userProfile.rol === 'CLIENTE') && (
               <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
@@ -401,28 +453,14 @@ export default function MiPerfil() {
                             <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
                           </div>
                           
-                          {/* BOTONES DE ACCIÓN */}
+                          {/* Botones de acción por tarjeta */}
                           <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
-                            <button 
-                              onClick={() => openEditModal(pub)}
-                              className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer"
-                            >
-                              ✏️ Editar
-                            </button>
-                            <button 
-                              onClick={() => toggleServiceStatus(pub)}
-                              className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}
-                            >
+                            <button onClick={() => openEditModal(pub)} className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer">✏️ Editar</button>
+                            <button onClick={() => toggleServiceStatus(pub)} className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
                               {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
                             </button>
-                            <button 
-                              onClick={() => handleDeleteService(pub.id)}
-                              className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer"
-                            >
-                              🗑️ Eliminar
-                            </button>
+                            <button onClick={() => handleDeleteService(pub.id)} className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer">🗑️ Eliminar</button>
                           </div>
-
                         </div>
                       </div>
                     ))
@@ -434,9 +472,9 @@ export default function MiPerfil() {
         </div>
       </div>
 
-      {/* ================= MODALES ================= */}
-      
-      {/* 1. MODAL EDITAR PERFIL (CON TODOS LOS CAMPOS ORIGINALES) */}
+      {/* ========================================== */}
+      {/* MODAL 1: EDITAR PERFIL                      */}
+      {/* ========================================== */}
       {showEditProfileModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
@@ -516,7 +554,9 @@ export default function MiPerfil() {
         </div>
       )}
 
-      {/* 2. MODAL CREAR SERVICIO */}
+      {/* ========================================== */}
+      {/* MODAL 2: CREAR SERVICIO Y CALENDARIO        */}
+      {/* ========================================== */}
       {showNewServiceModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
@@ -576,7 +616,7 @@ export default function MiPerfil() {
                 </div>
               </div>
 
-              {/* CALENDARIO MOCKUP */}
+              {/* Sistema de Agendamiento */}
               <div className="pt-5 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-bold text-slate-900 text-sm">📅 Sistema de Agendamiento</h4>
@@ -652,7 +692,9 @@ export default function MiPerfil() {
         </div>
       )}
 
-      {/* 3. MODAL EDITAR SERVICIO (CON 3 FOTOS Y CALENDARIO INTEGRADO) */}
+      {/* ========================================== */}
+      {/* MODAL 3: EDITAR SERVICIO Y CALENDARIO       */}
+      {/* ========================================== */}
       {showEditServiceModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
@@ -686,7 +728,7 @@ export default function MiPerfil() {
                 <textarea rows={3} required value={editServiceForm.descripcion} onChange={e => setEditServiceForm({...editServiceForm, descripcion: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 resize-none" />
               </div>
 
-              {/* Subida de 3 Fotos en Edición (Muestra la foto actual si existe) */}
+              {/* Subida de 3 Fotos en Edición */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2">Fotos del servicio (Máximo 3)</label>
                 <div className="grid grid-cols-3 gap-3">
@@ -709,7 +751,7 @@ export default function MiPerfil() {
                 </div>
               </div>
 
-              {/* CALENDARIO EN EDICIÓN (Muestra bloques actuales + Generador de nuevos) */}
+              {/* Calendario y Bloques en Edición */}
               <div className="pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-bold text-slate-900 text-sm">📅 Modificar Calendario / Disponibilidad</h4>
@@ -730,7 +772,6 @@ export default function MiPerfil() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Lista de bloques ya creados en la BD */}
                     {existingBlocks.length > 0 && (
                       <div className="border border-emerald-200 rounded-2xl p-3 bg-emerald-50/20 max-h-40 overflow-y-auto">
                         <h6 className="text-xs font-bold text-emerald-800 border-b border-emerald-100 pb-1 mb-2">Horarios ya publicados:</h6>
@@ -747,7 +788,6 @@ export default function MiPerfil() {
                       </div>
                     )}
 
-                    {/* Generador de nuevos bloques */}
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                       <h6 className="mb-2 text-xs font-bold text-slate-800">🗓️ Agregar Más Bloques de Horarios</h6>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
