@@ -60,6 +60,34 @@ export function registerUser(user) {
   })
 }
 
+export async function getTrades() {
+  const data = await request('/api/oficios')
+  return Array.isArray(data) ? data : (data.oficios || [])
+}
+
+export function createTrade(trade, token) {
+  return request('/api/oficios', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify(trade),
+  })
+}
+
+export function updateTrade(id, trade, token) {
+  return request(`/api/oficios/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify(trade),
+  })
+}
+
+export function deleteTrade(id, token) {
+  return request(`/api/oficios/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders(token) },
+  })
+}
+
 export async function getPublications() {
   const data = await request('/api/publicaciones')
   return Array.isArray(data) ? data : (data.publicaciones || [])
