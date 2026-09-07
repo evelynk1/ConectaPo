@@ -39,6 +39,9 @@ export function normalizeUser(user = {}) {
   }
 }
 
+// ==========================================
+// AUTH Y REGISTRO
+// ==========================================
 export async function loginUser(credentials) {
   const data = await request('/api/auth/login', {
     method: 'POST',
@@ -60,6 +63,9 @@ export function registerUser(user) {
   })
 }
 
+// ==========================================
+// OFICIOS Y PÚBLICAS
+// ==========================================
 export async function getTrades() {
   const data = await request('/api/oficios')
   return Array.isArray(data) ? data : (data.oficios || [])
@@ -115,27 +121,9 @@ export function normalizePublication(publication) {
   }
 }
 
-export function createTicket(ticket, token) {
-  return request('/api/tickets', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify(ticket),
-  })
-}
-
-export function createScheduleBlocks(blocks, token) {
-  const { publicacion_id, ...schedule } = blocks
-  return request(`/api/horarios/publicacion/${publicacion_id}/masivo`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-    body: JSON.stringify(schedule),
-  })
-}
-
 // ==========================================
 // FUNCIONES DEL PERFIL DE USUARIO
 // ==========================================
-
 export async function getUserProfile(token) {
   const data = await request('/api/auth/perfil', {
     method: 'GET',
@@ -179,21 +167,20 @@ export async function uploadUserAvatar(file, token) {
   return response.json();
 }
 
-export async function guardarHorariosMasivos(publicacionId, bloques, token) {
-  const response = await fetch(`${API_URL}/api/horarios/publicacion/${publicacionId}/masivo`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({ bloques })
+// ==========================================
+// FUNCIONES DE SERVICIOS / PUBLICACIONES
+// ==========================================
+export async function obtenerOficios() {
+  const response = await fetch(`${API_URL}/api/oficios`);
+  if (!response.ok) throw new Error('Error al obtener los oficios.');
+  return response.json();
+}
+
+export async function obtenerMisPublicaciones(token) {
+  const response = await fetch(`${API_URL}/api/publicaciones/mis-publicaciones`, {
+    headers: { Authorization: `Bearer ${token}` }
   });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || 'Error al guardar los horarios.');
-  }
-
+  if (!response.ok) throw new Error('Error al obtener tus publicaciones.');
   return response.json();
 }
 
@@ -210,38 +197,6 @@ export async function crearPublicacionServicio(data, token) {
   return response.json();
 }
 
-export async function obtenerMisPublicaciones(token) {
-  const response = await fetch(`${API_URL}/api/publicaciones/mis-publicaciones`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!response.ok) throw new Error('Error al obtener tus publicaciones.');
-  return response.json();
-}
-
-// ==========================================
-// FUNCIÓN PARA OBTENER LOS TICKETS (ADMIN)
-// ==========================================
-
-export async function getTickets(token) {
-  const data = await request('/api/tickets', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(token)
-    }
-  })
-  return Array.isArray(data) ? data : (data.tickets || [])
-}
-
-
-// Traer la lista de oficios desde la base de datos
-export async function obtenerOficios() {
-  const response = await fetch(`${API_URL}/api/oficios`);
-  if (!response.ok) throw new Error('Error al obtener los oficios.');
-  return response.json();
-}
-
-// Actualizar un servicio/publicación existente
 export async function actualizarPublicacionServicio(id, data, token) {
   const response = await fetch(`${API_URL}/api/publicaciones/${id}`, {
     method: 'PUT',
@@ -276,7 +231,52 @@ export async function eliminarPublicacionServicio(id, token) {
   return response.json();
 }
 
-// Obtener los bloques horarios de una publicación específica
+// 👉 NUEVA FUNCIÓN: Subir archivos físicos de fotos
+export async function subirFotosServicio(publicacionId, files, token) {
+  const formData = new FormData();
+  if (files[1]) formData.append('foto1', files[1]);
+  if (files[2]) formData.append('foto2', files[2]);
+  if (files[3]) formData.append('foto3', files[3]);
+
+  // Si no hay archivos, salimos sin hacer nada
+  if (!files[1] && !files[2] && !files[3]) return;
+
+  const response = await fetch(`${API_URL}/api/publicaciones/${publicacionId}/fotos`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Error al subir las fotos.');
+  }
+  return response.json();
+}
+
+// ==========================================
+// FUNCIONES DE CALENDARIO / HORARIOS
+// ==========================================
+export async function guardarHorariosMasivos(publicacionId, bloques, token) {
+  const response = await fetch(`${API_URL}/api/horarios/publicacion/${publicacionId}/masivo`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ bloques })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Error al guardar los horarios.');
+  }
+
+  return response.json();
+}
+
 export async function obtenerBloquesHorarios(publicacionId, token) {
   const response = await fetch(`${API_URL}/api/bloques-horarios/${publicacionId}`, {
     headers: {
@@ -287,7 +287,6 @@ export async function obtenerBloquesHorarios(publicacionId, token) {
   return response.json();
 }
 
-// Eliminar un bloque horario individual
 export async function eliminarBloqueHorario(bloqueId, token) {
   const response = await fetch(`${API_URL}/api/bloques-horarios/${bloqueId}`, {
     method: 'DELETE',
@@ -297,4 +296,26 @@ export async function eliminarBloqueHorario(bloqueId, token) {
   });
   if (!response.ok) throw new Error('Error al eliminar el bloque horario.');
   return response.json();
+}
+
+// ==========================================
+// TICKETS (ADMIN)
+// ==========================================
+export function createTicket(ticket, token) {
+  return request('/api/tickets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify(ticket),
+  })
+}
+
+export async function getTickets(token) {
+  const data = await request('/api/tickets', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(token)
+    }
+  })
+  return Array.isArray(data) ? data : (data.tickets || [])
 }

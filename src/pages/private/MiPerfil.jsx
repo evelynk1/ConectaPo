@@ -9,10 +9,11 @@ import {
   crearPublicacionServicio, 
   actualizarPublicacionServicio,
   eliminarPublicacionServicio,
+  subirFotosServicio,           // <-- IMPORTANTE: Nueva función importada
   guardarHorariosMasivos,
   obtenerOficios,
-  obtenerBloquesHorarios,     // <-- Añadido para evitar crash
-  eliminarBloqueHorario        // <-- Añadido para evitar crash
+  obtenerBloquesHorarios, 
+  eliminarBloqueHorario
 } from '../../services/api';
 
 export default function MiPerfil() {
@@ -41,20 +42,20 @@ export default function MiPerfil() {
   const [services, setServices] = useState([]);
   const [oficios, setOficios] = useState([]);
 
-  // Formulario para Crear un Servicio
+  // Formulario y Archivos Físicos (CREAR)
   const [newServiceForm, setNewServiceForm] = useState({
-    titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
-    descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
+    titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
   });
+  const [newServiceFiles, setNewServiceFiles] = useState({ 1: null, 2: null, 3: null }); // <-- Para guardar el archivo File real
 
-  // Formulario para Editar un Servicio
+  // Formulario y Archivos Físicos (EDITAR)
   const [editServiceForm, setEditServiceForm] = useState({
-    id: null, titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0,
-    descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '', es_horario_conversable: false
+    id: null, titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '', es_horario_conversable: false
   });
+  const [editServiceFiles, setEditServiceFiles] = useState({ 1: null, 2: null, 3: null }); // <-- Para guardar el archivo File real
 
   // ==========================================
-  // ESTADOS DE CALENDARIO (CREACIÓN Y EDICIÓN)
+  // ESTADOS DE CALENDARIO
   // ==========================================
   const [isConversable, setIsConversable] = useState(false);
   const [scheduleRange, setScheduleRange] = useState({ start: '', end: '' });
@@ -70,49 +71,50 @@ export default function MiPerfil() {
   // ==========================================
   // EFECTO INICIAL: CARGAR PERFIL Y SERVICIOS
   // ==========================================
+  const fetchAllData = async () => {
+    try {
+      setIsLoading(true);
+      const oficiosData = await obtenerOficios();
+      setOficios(oficiosData.oficios || []);
+
+      const dbData = await getUserProfile(token);
+      const avatarUrl = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
+
+      const fullProfile = {
+        nombres: dbData.nombres || '',
+        primer_apellido: dbData.primer_apellido || '',
+        segundo_apellido: dbData.segundo_apellido || '',
+        email: dbData.email || '',
+        telefono: dbData.telefono || '',
+        genero: dbData.genero || '',
+        instagram_url: dbData.instagram_url || '',
+        facebook_url: dbData.facebook_url || '',
+        avatar: avatarUrl,
+        rol: dbData.rol,
+        titulo_oficio: dbData.titulo_oficio || 'Profesional independiente',
+        experiencia: dbData.experiencia || 'Aún sin información',
+        biografia: dbData.biografia || '',
+        location: 'Chile',
+        skills: 'Aún no registradas'
+      };
+
+      setUserProfile(fullProfile);
+      setEditForm(fullProfile);
+
+      const pubData = await obtenerMisPublicaciones(token);
+      const pubsConEstado = (pubData.publicaciones || []).map(p => ({ ...p, estado: p.estado || 'ACTIVA' }));
+      setServices(pubsConEstado);
+
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        setIsLoading(true);
-        const oficiosData = await obtenerOficios();
-        setOficios(oficiosData.oficios || []);
-
-        const dbData = await getUserProfile(token);
-        const avatarUrl = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
-
-        const fullProfile = {
-          nombres: dbData.nombres || '',
-          primer_apellido: dbData.primer_apellido || '',
-          segundo_apellido: dbData.segundo_apellido || '',
-          email: dbData.email || '',
-          telefono: dbData.telefono || '',
-          genero: dbData.genero || '',
-          instagram_url: dbData.instagram_url || '',
-          facebook_url: dbData.facebook_url || '',
-          avatar: avatarUrl,
-          rol: dbData.rol,
-          titulo_oficio: dbData.titulo_oficio || 'Profesional independiente',
-          experiencia: dbData.experiencia || 'Aún sin información',
-          biografia: dbData.biografia || '',
-          location: 'Chile',
-          skills: 'Aún no registradas'
-        };
-
-        setUserProfile(fullProfile);
-        setEditForm(fullProfile);
-
-        const pubData = await obtenerMisPublicaciones(token);
-        const pubsConEstado = (pubData.publicaciones || []).map(p => ({ ...p, estado: p.estado || 'ACTIVA' }));
-        setServices(pubsConEstado);
-
-      } catch (error) {
-        console.error("Error cargando datos:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (token) fetchAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // ==========================================
@@ -163,11 +165,13 @@ export default function MiPerfil() {
   const handlePhotoChange = (formType, num, e) => {
     const file = e.target.files[0];
     if (file) {
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(file); // Solo para previsualización
       if (formType === 'create') {
         setNewServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: url }));
+        setNewServiceFiles(prev => ({ ...prev, [num]: file })); // Guardamos el archivo real
       } else {
         setEditServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: url }));
+        setEditServiceFiles(prev => ({ ...prev, [num]: file })); // Guardamos el archivo real
       }
     }
   };
@@ -175,8 +179,10 @@ export default function MiPerfil() {
   const removePhoto = (formType, num) => {
     if (formType === 'create') {
       setNewServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: '' }));
+      setNewServiceFiles(prev => ({ ...prev, [num]: null }));
     } else {
       setEditServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: '' }));
+      setEditServiceFiles(prev => ({ ...prev, [num]: null }));
     }
   };
 
@@ -239,32 +245,41 @@ export default function MiPerfil() {
   }, {});
 
   // ==========================================
-  // GESTIÓN DE SERVICIOS (CREAR, EDITAR, PAUSAR, ELIMINAR)
+  // GESTIÓN DE SERVICIOS (CREAR)
   // ==========================================
   const handleCreateService = async (e) => {
     e.preventDefault();
     setIsCreatingService(true);
     setErrorMsg(null);
     try {
+      // 1. Crear registro (sin enviar los textos de foto porque no son urls válidas aún)
       const pubRes = await crearPublicacionServicio({
         titulo: newServiceForm.titulo, descripcion: newServiceForm.descripcion,
         precio_base: Number(newServiceForm.precio_base), oficio_id: Number(newServiceForm.oficio_id),
-        anos_experiencia: Number(newServiceForm.anos_experiencia), es_horario_conversable: isConversable,
-        foto_url_1: newServiceForm.foto_url_1 || null,
-        foto_url_2: newServiceForm.foto_url_2 || null,
-        foto_url_3: newServiceForm.foto_url_3 || null
+        anos_experiencia: Number(newServiceForm.anos_experiencia), es_horario_conversable: isConversable
       }, token);
 
       const nuevaPubId = pubRes.publicacion.id;
+
+      // 2. Subir fotos si es que se seleccionaron
+      if (newServiceFiles[1] || newServiceFiles[2] || newServiceFiles[3]) {
+        await subirFotosServicio(nuevaPubId, newServiceFiles, token);
+      }
+
+      // 3. Guardar Calendario
       if (!isConversable && generatedBlocks.length > 0) {
         const bloquesFormateados = generatedBlocks.map(b => ({
           fecha_hora_inicio: `${b.fecha}T${b.hora_inicio}:00`, fecha_hora_fin: `${b.fecha}T${b.hora_fin}:00`
         }));
         await guardarHorariosMasivos(nuevaPubId, bloquesFormateados, token);
       }
-      setServices([{ ...pubRes.publicacion, estado: 'ACTIVA' }, ...services]);
+
+      // Refrescamos datos para obtener las fotos reales de la BD
+      await fetchAllData();
+      
       setShowNewServiceModal(false);
       setNewServiceForm({ titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '' });
+      setNewServiceFiles({ 1: null, 2: null, 3: null });
       setGeneratedBlocks([]); setScheduleRange({ start: '', end: '' }); setIsConversable(false);
     } catch (error) {
       setErrorMsg(error.message || 'Error al crear el servicio.');
@@ -273,6 +288,9 @@ export default function MiPerfil() {
     }
   };
 
+  // ==========================================
+  // GESTIÓN DE SERVICIOS (EDITAR)
+  // ==========================================
   const openEditModal = async (pub) => {
     setEditServiceForm({
       id: pub.id,
@@ -286,12 +304,14 @@ export default function MiPerfil() {
       foto_url_3: pub.foto_url_3 || '',
       es_horario_conversable: pub.es_horario_conversable || false
     });
+    setEditServiceFiles({ 1: null, 2: null, 3: null });
     setEditIsConversable(pub.es_horario_conversable || false);
     setEditGeneratedBlocks([]);
     setEditScheduleRange({ start: '', end: '' });
 
     try {
-      const resBloques = await obtenerBloquesHorarios(pub.id);
+      // AQUÍ ESTABA EL ERROR: Agregado el parámetro token
+      const resBloques = await obtenerBloquesHorarios(pub.id, token);
       setExistingBlocks(resBloques.bloques || []);
     } catch (err) {
       console.error("Error al cargar bloques:", err);
@@ -315,18 +335,22 @@ export default function MiPerfil() {
     setIsSaving(true);
     setErrorMsg(null);
     try {
-      const updatedPub = await actualizarPublicacionServicio(editServiceForm.id, {
+      // 1. Actualizar textos
+      await actualizarPublicacionServicio(editServiceForm.id, {
         titulo: editServiceForm.titulo,
         descripcion: editServiceForm.descripcion,
         precio_base: Number(editServiceForm.precio_base),
         oficio_id: Number(editServiceForm.oficio_id),
         anos_experiencia: Number(editServiceForm.anos_experiencia),
-        es_horario_conversable: editIsConversable,
-        foto_url_1: editServiceForm.foto_url_1 || null,
-        foto_url_2: editServiceForm.foto_url_2 || null,
-        foto_url_3: editServiceForm.foto_url_3 || null
+        es_horario_conversable: editIsConversable
       }, token);
 
+      // 2. Actualizar fotos SI hay nuevos archivos
+      if (editServiceFiles[1] || editServiceFiles[2] || editServiceFiles[3]) {
+        await subirFotosServicio(editServiceForm.id, editServiceFiles, token);
+      }
+
+      // 3. Agregar nuevos bloques horarios
       if (!editIsConversable && editGeneratedBlocks.length > 0) {
         const bloquesFormateados = editGeneratedBlocks.map(b => ({
           fecha_hora_inicio: `${b.fecha}T${b.hora_inicio}:00`, fecha_hora_fin: `${b.fecha}T${b.hora_fin}:00`
@@ -334,7 +358,8 @@ export default function MiPerfil() {
         await guardarHorariosMasivos(editServiceForm.id, bloquesFormateados, token);
       }
 
-      setServices(services.map(s => s.id === editServiceForm.id ? { ...s, ...updatedPub.publicacion } : s));
+      // Refrescamos datos para obtener las fotos reales de la BD
+      await fetchAllData();
       setShowEditServiceModal(false);
     } catch (error) {
       setErrorMsg(error.message || 'Error al actualizar el servicio.');
@@ -343,6 +368,9 @@ export default function MiPerfil() {
     }
   };
 
+  // ==========================================
+  // GESTIÓN DE SERVICIOS (PAUSAR Y ELIMINAR)
+  // ==========================================
   const toggleServiceStatus = async (pub) => {
     const nuevoEstado = pub.estado === 'ACTIVA' ? 'PAUSADA' : 'ACTIVA';
     try {
@@ -443,38 +471,37 @@ export default function MiPerfil() {
                     <p className="text-xs text-slate-400 col-span-2 py-4 text-center">Aún no tienes servicios publicados.</p>
                   ) : (
                     services.map(pub => (
-<div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
-  {/* 👇 AQUÍ ESTÁ EL CAMBIO: agregamos flex items-center justify-center al div y el onError a la img */}
-  <div className="h-32 w-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
-    <img 
-      src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} 
-      alt={pub.titulo} 
-      className="w-full h-full object-cover" 
-      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'; }}
-    />
-    <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${pub.estado === 'PAUSADA' ? 'bg-amber-500' : 'bg-emerald-500'}`}>
-      {pub.estado || 'ACTIVA'}
-    </span>
-  </div>
-  <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
-        <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
-      </div>
-      <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
-    </div>
-    
-    {/* Botones de acción por tarjeta */}
-    <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
-      <button onClick={() => openEditModal(pub)} className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer">✏️ Editar</button>
-      <button onClick={() => toggleServiceStatus(pub)} className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
-        {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
-      </button>
-      <button onClick={() => handleDeleteService(pub.id)} className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer">🗑️ Eliminar</button>
-    </div>
-  </div>
-</div>
+                      <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+                        <div className="h-32 w-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
+                          <img 
+                            src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} 
+                            alt={pub.titulo} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'; }}
+                          />
+                          <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${pub.estado === 'PAUSADA' ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+                            {pub.estado || 'ACTIVA'}
+                          </span>
+                        </div>
+                        <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
+                              <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
+                          </div>
+                          
+                          {/* Botones de acción por tarjeta */}
+                          <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
+                            <button onClick={() => openEditModal(pub)} className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer">✏️ Editar</button>
+                            <button onClick={() => toggleServiceStatus(pub)} className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
+                              {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
+                            </button>
+                            <button onClick={() => handleDeleteService(pub.id)} className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer">🗑️ Eliminar</button>
+                          </div>
+                        </div>
+                      </div>
                     ))
                   )}
                 </div>
