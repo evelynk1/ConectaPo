@@ -39,12 +39,14 @@ export default function CrearTicket() {
       const ticket = await createTicket({
         tipo_ticket_id: CATEGORIES.indexOf(form.category) + 1,
         mensaje: [form.subject, form.description].filter(Boolean).join('\n\n'),
+        nombre_usuario: form.user,
+        correo_usuario: form.email
       }, token)
 
-      setTicketId(ticket.ticket_id || ticket.id || '')
+      setTicketId(ticket.ticket_id || ticket.id || 'REGISTRADO')
       setSubmitted(true);
     } catch (error) {
-      alert(error.message);
+      alert(error.message || "Error al crear el ticket");
     }
   }
 
@@ -52,13 +54,12 @@ export default function CrearTicket() {
     <div className="min-h-[calc(100vh-4rem)] bg-slate-100 py-10 px-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* COLUMNA IZQUIERDA: Menú de navegación al lado */}
+        {/* COLUMNA IZQUIERDA: Menú de navegación */}
         <div className="lg:col-span-1 space-y-3">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">
             Navegación
           </div>
 
-          {/* Perfil */}
           <button 
             onClick={() => navigate('/panel/perfil')}
             className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all text-left cursor-pointer"
@@ -70,7 +71,6 @@ export default function CrearTicket() {
             </div>
           </button>
 
-          {/* Calendario */}
           <button 
             onClick={() => navigate('/panel/calendario')}
             className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-sm transition-all text-left cursor-pointer"
@@ -82,7 +82,6 @@ export default function CrearTicket() {
             </div>
           </button>
 
-          {/* Tickets (Activo actual con borde naranja destacado) */}
           <div className="w-full flex items-center gap-3 p-4 rounded-2xl bg-orange-50 border-2 border-orange-200 shadow-sm text-left">
             <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-xl shrink-0">🎫</div>
             <div>
@@ -98,10 +97,20 @@ export default function CrearTicket() {
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-12 text-center">
               <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center text-4xl mx-auto mb-6">✅</div>
               <h2 className="text-2xl font-bold text-slate-900 mb-2" style={{ fontFamily: 'Plus Jakarta Sans' }}>Ticket creado</h2>
-              <p className="text-slate-500 text-sm mb-2">El ticket ha sido registrado exitosamente.</p>
-              {ticketId && <p className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl inline-block mb-8">{ticketId}</p>}
+              <p className="text-slate-500 text-sm mb-2">El ticket ha sido registrado exitosamente y enviado al panel de resolución.</p>
+              {ticketId && <p className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl inline-block mb-8">ID: {ticketId}</p>}
               <div className="flex gap-3 justify-center">
-                <button onClick={() => { setSubmitted(false); setTicketId(''); setForm({ user: '', email: '', category: '', subject: '', description: '' }); }} className="px-6 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all cursor-pointer" style={{ background: '#F97316' }}>Crear otro</button>
+                <button 
+                  onClick={() => { 
+                    setSubmitted(false); 
+                    setTicketId(''); 
+                    setForm({ user: '', email: '', category: '', subject: '', description: '' }); 
+                  }} 
+                  className="px-6 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all cursor-pointer" 
+                  style={{ background: '#F97316' }}
+                >
+                  Crear otro
+                </button>
               </div>
             </div>
           ) : (

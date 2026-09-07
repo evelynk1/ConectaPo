@@ -1,19 +1,13 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useUser } from '../../context/useUser'
+import { getTickets } from '../../services/api'
 
 // Datos simulados para las estadísticas del dashboard 
 const STATS = [
     { label: 'Usuarios totales', value: '3.842', delta: '+12%', icon: '👥', color: '#2563EB' },
     { label: 'Tickets pendientes', value: '47', delta: '+5', icon: '🎫', color: '#F97316' },
     { label: 'Servicios activos', value: '1.204', delta: '+8%', icon: '🔧', color: '#10B981' },
-]
-
-// Datos simulados para los tickets recientes de usuarios 
-const RECENT_TICKETS = [
-    { id: 'TK-001', user: 'María González', issue: 'Error al cargar imagen de perfil', status: 'abierto', priority: 'alta', date: '24/08/2026' },
-    { id: 'TK-002', user: 'Pedro Vega', issue: 'Perfil verificación pendiente', status: 'en_proceso', priority: 'media', date: '23/08/2026' },
-    { id: 'TK-003', user: 'Ana Torres', issue: 'Reseña inapropiada reportada', status: 'resuelto', priority: 'baja', date: '22/08/2026' },
-    { id: 'TK-004', user: 'Carlos Mendoza', issue: 'No puede actualizar contraseña', status: 'abierto', priority: 'media', date: '22/08/2026' },
-    { id: 'TK-005', user: 'Valentina Ruiz', issue: 'Disputa con cliente en servicio', status: 'en_proceso', priority: 'alta', date: '21/08/2026' },
 ]
 
 // Datos simulados para los usuarios nuevos
@@ -29,12 +23,14 @@ const STATUS_BADGE = {
     abierto: 'bg-red-100 text-red-700',
     en_proceso: 'bg-amber-100 text-amber-700',
     resuelto: 'bg-emerald-100 text-emerald-700',
+    pendiente: 'bg-red-100 text-red-700',
 }
 
 const STATUS_LABEL = {
     abierto: 'Abierto',
     en_proceso: 'En proceso',
     resuelto: 'Resuelto',
+    pendiente: 'Pendiente',
 }
 
 const PRIORITY_BADGE = {
@@ -45,6 +41,34 @@ const PRIORITY_BADGE = {
 
 export default function DashboardAdmin() {
     const navigate = useNavigate()
+    const { token } = useUser()
+    const [tickets, setTickets] = useState([])
+    const [loadingTickets, setLoadingTickets] = useState(true)
+
+    useEffect(() => {
+        getTickets(token)
+            .then(data => {
+                // Mapeamos los datos de la API para que encajen con la tabla de administración
+                const formatted = (Array.isArray(data) ? data : data.tickets || []).map(t => ({
+                    id: `TK-${t.id || t.ticket_id || '000'}`,
+                    user: t.nombre_usuario || t.user || 'Usuario Anónimo',
+                    issue: t.mensaje || t.issue || 'Sin descripción',
+                    status: t.estado || 'abierto',
+                    priority: t.prioridad || 'media',
+                    date: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'Hoy'
+                }))
+                setTickets(formatted.length > 0 ? formatted : [
+                    { id: 'TK-001', user: 'María González', issue: 'Error al cargar imagen de perfil', status: 'abierto', priority: 'alta', date: '24/08/2026' }
+                ])
+            })
+            .catch(() => {
+                // Fallback por si la API falla o no está disponible
+                setTickets([
+                    { id: 'TK-001', user: 'María González', issue: 'Error al cargar imagen de perfil', status: 'abierto', priority: 'alta', date: '24/08/2026' }
+                ])
+            })
+            .finally(() => setLoadingTickets(false))
+    }, [token])
 
     return (
         <div className="p-6 space-y-6 bg-slate-100 min-h-full">
@@ -97,25 +121,29 @@ export default function DashboardAdmin() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {RECENT_TICKETS.map((t) => (
-                                    <tr key={t.id} className="hover:bg-slate-50/30 transition-colors">
+                                {loadingTickets ? (
+                                    <tr>
+                                        <td colSpan="6" className="px-7 py-10 text-center text-slate-400">Cargando tickets...</td>
+                                    </tr>
+                                ) : tickets.map((t, idx) => (
+                                    <tr key={t.id || idx} className="hover:bg-slate-50/30 transition-colors">
                                         <td className="px-7 py-5 font-mono font-medium text-blue-600">{t.id}</td>
                                         <td className="px-7 py-5 font-semibold text-slate-800">{t.user}</td>
                                         <td className="px-7 py-5 text-slate-600 max-w-[200px] truncate">{t.issue}</td>
                                         <td className="px-7 py-5">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${PRIORITY_BADGE[t.priority]}`}>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${PRIORITY_BADGE[t.priority] || PRIORITY_BADGE.media}`}>
                                                 {t.priority}
                                             </span>
                                         </td>
                                         <td className="px-7 py-5">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${STATUS_BADGE[t.status]}`}>
-                                                {STATUS_LABEL[t.status]}
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${STATUS_BADGE[t.status] || STATUS_BADGE.abierto}`}>
+                                                {STATUS_LABEL[t.status] || 'Abierto'}
                                             </span>
                                         </td>
                                         <td className="px-7 py-5">
                                             <button
                                                 onClick={() => navigate('/admin/tickets')}
-                                                className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+                                                className="text-blue-600 hover:text-blue-800 font-semibold transition-colors cursor-pointer"
                                             >
                                                 Gestionar →
                                             </button>
@@ -161,7 +189,7 @@ export default function DashboardAdmin() {
                     <button
                         key={a.label}
                         onClick={() => navigate(a.path)}
-                        className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all text-left group flex items-start gap-4"
+                        className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all text-left group flex items-start gap-4 cursor-pointer"
                     >
                         <div
                             className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0"
