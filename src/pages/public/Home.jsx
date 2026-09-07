@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom' // 1. Importamos el hook de navegación
+import { useNavigate } from 'react-router-dom'
 import { CATEGORIES } from '../../data/services'
 import ServiceCard from '../../components/ServiceCard'
 import { getPublications, normalizePublication } from '../../services/api'
@@ -8,7 +8,7 @@ export default function Home() {
   const [search, setSearch] = useState('')
   const [comuna, setComuna] = useState('')
   const [services, setServices] = useState([])
-  const navigate = useNavigate() // 2. Inicializamos el hook
+  const navigate = useNavigate()
 
   useEffect(() => {
     getPublications()
@@ -16,7 +16,6 @@ export default function Home() {
       .catch(() => setServices([]))
   }, [])
 
-  // Función al enviar el formulario de búsqueda del Hero
   const handleSearch = (e) => {
     e.preventDefault()
     const params = new URLSearchParams()
@@ -64,13 +63,12 @@ export default function Home() {
                 <select value={comuna} onChange={e => setComuna(e.target.value)}
                   className="flex-1 bg-transparent text-sm text-slate-600 outline-none cursor-pointer">
                   <option value="">Toda Chile</option>
-                  {['Santiago', 'Providencia', 'Las Condes', 'Maipú', 'Ñuñoa', 'Vitacura', 'La Florida'].map(c => (
+                  {['Santiago', 'Providencia', 'Las Condes', 'Maipú', 'Ñuñoa', 'Vitacura', 'La Florida', 'Valdivia'].map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
 
-              {/* CORREGIDO: Usamos type="submit" para que active handleSearch y nos lleve a /buscar */}
               <button type="submit"
                 className="px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg shrink-0"
                 style={{ background: '#F97316' }}>
@@ -80,18 +78,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Stats
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[['2.400+', 'Profesionales'], ['15.000+', 'Trabajos realizados'], ['98%', 'Clientes satisfechos'], ['50+', 'Comunas cubiertas']].map(([n, l]) => (
-            <div key={l} className="text-center">
-              <div className="text-2xl font-extrabold text-blue-600" style={{ fontFamily: 'Plus Jakarta Sans' }}>{n}</div>
-              <div className="text-xs text-slate-500 mt-1">{l}</div>
-            </div>
-          ))}
-        </div>
-      </div> */}
 
       {/* Categorias */}
       <section className="max-w-6xl mx-auto px-4 py-16">
