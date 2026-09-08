@@ -1,6 +1,4 @@
-
 import { useEffect, useState } from 'react'
-
 import { useNavigate } from 'react-router-dom'
 
 import ServiceCard from '../../components/ServiceCard'
@@ -17,6 +15,7 @@ export default function Home() {
   const [services, setServices] = useState([])
   const [categories, setCategories] = useState([])
   const [loadingCategories, setLoadingCategories] = useState(true)
+  const [showAllCategories, setShowAllCategories] = useState(false)
 
   const navigate = useNavigate()
 
@@ -96,6 +95,7 @@ export default function Home() {
             'linear-gradient(135deg, #1d4ed8 0%, #2563EB 60%, #3b82f6 100%)',
         }}
       >
+
         {/* Patrón de fondo */}
         <div
           className="absolute inset-0 opacity-10"
@@ -112,7 +112,6 @@ export default function Home() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6 bg-white/20 text-white backdrop-blur-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-
               +2.400 profesionales activos en Chile
             </div>
 
@@ -129,7 +128,6 @@ export default function Home() {
               </span>
 
               <br />
-
               para tu hogar
             </h1>
 
@@ -169,6 +167,7 @@ export default function Home() {
                   placeholder="¿Qué servicio necesitas?"
                   className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 text-sm outline-none"
                 />
+
               </div>
 
               {/* Comuna */}
@@ -212,6 +211,7 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
+
               </div>
 
               {/* Botón buscar */}
@@ -222,10 +222,12 @@ export default function Home() {
               >
                 Buscar
               </button>
+
             </form>
           </div>
         </div>
       </section>
+
 
       {/* =====================================================
           CATEGORÍAS
@@ -247,25 +249,38 @@ export default function Home() {
             </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/galeria')}
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block cursor-pointer"
-          >
-            Ver todo →
-          </button>
+          {/* Botón Ver todas / Ver menos */}
+          {categories.length > 8 && (
+            <button
+              type="button"
+              onClick={() =>
+                setShowAllCategories(!showAllCategories)
+              }
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+            >
+              {showAllCategories
+                ? 'Ver menos ↑'
+                : 'Ver todas →'}
+            </button>
+          )}
+
         </div>
+
 
         {/* Loading */}
         {loadingCategories ? (
+
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+
             {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
                 className="h-24 rounded-2xl bg-slate-100 animate-pulse"
               />
             ))}
+
           </div>
+
         ) : categories.length === 0 ? (
 
           /* Sin categorías */
@@ -278,7 +293,11 @@ export default function Home() {
           /* Categorías */
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
 
-            {categories.map((category) => (
+            {(showAllCategories
+              ? categories
+              : categories.slice(0, 8)
+            ).map((category) => (
+
               <button
                 key={category.id}
                 type="button"
@@ -287,6 +306,7 @@ export default function Home() {
                 }
                 className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer"
               >
+
                 <span className="text-2xl group-hover:scale-110 transition-transform">
                   {category.icon}
                 </span>
@@ -294,12 +314,17 @@ export default function Home() {
                 <span className="text-xs font-medium text-slate-600 text-center leading-tight">
                   {category.label}
                 </span>
+
               </button>
+
             ))}
 
           </div>
+
         )}
+
       </section>
+
 
       {/* =====================================================
           PROFESIONALES DESTACADOS
@@ -330,7 +355,9 @@ export default function Home() {
             >
               Ver galería →
             </button>
+
           </div>
+
 
           {services.length === 0 ? (
 
@@ -343,17 +370,21 @@ export default function Home() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
               {services.slice(0, 3).map((service) => (
+
                 <ServiceCard
                   key={service.id}
                   service={service}
                 />
+
               ))}
 
             </div>
+
           )}
 
         </div>
       </section>
+
 
       {/* =====================================================
           BANNER PARA PROFESIONALES
@@ -405,6 +436,7 @@ export default function Home() {
 
           </div>
         </div>
+
       </section>
 
     </div>
