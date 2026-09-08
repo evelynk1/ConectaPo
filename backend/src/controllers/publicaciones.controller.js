@@ -88,7 +88,9 @@ export const crearPublicacion = async (req, res) => {
     }
 };
 
-// Obtener publicaciones públicas activas
+// ==========================================
+// 1. OBTENER TODAS LAS PUBLICACIONES (Inicio)
+// ==========================================
 export const obtenerPublicaciones = async (req, res) => {
     try {
         const query = `
@@ -107,7 +109,8 @@ export const obtenerPublicaciones = async (req, res) => {
                 u.nombres AS usuario_nombre,
                 u.primer_apellido AS usuario_apellido,
                 u.telefono AS usuario_telefono,
-                u.email AS usuario_email
+                u.email AS usuario_email,
+                u.avatar_url AS usuario_avatar -- ¡Esta es la magia que faltaba!
             FROM negocio.publicaciones p
             JOIN negocio.oficios o ON p.oficio_id = o.id
             JOIN auth.usuarios u ON p.usuario_id = u.id
@@ -287,12 +290,16 @@ export const subirFotosPublicacion = async (req, res) => {
     }
 };
 
+// ==========================================
+// 2. OBTENER DETALLE DE UNA PUBLICACIÓN
+// ==========================================
 export const obtenerPublicacion = async (req, res) => {
     try {
         const { id } = req.params;
         const { rows } = await pool.query(`
             SELECT p.*, o.nombre AS oficio_nombre, u.nombres AS usuario_nombre,
-                   u.primer_apellido AS usuario_apellido, u.telefono AS usuario_telefono
+                   u.primer_apellido AS usuario_apellido, u.telefono AS usuario_telefono,
+                   u.avatar_url AS usuario_avatar -- ¡Agregado aquí también!
             FROM negocio.publicaciones p
             JOIN negocio.oficios o ON o.id = p.oficio_id
             JOIN auth.usuarios u ON u.id = p.usuario_id
