@@ -168,7 +168,7 @@ export default function Navbar() {
                   onClick={closeMenu}
                   className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  Mi perfil
+                  Mi Panel
                 </Link>
               )}
 
