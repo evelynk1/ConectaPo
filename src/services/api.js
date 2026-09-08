@@ -658,3 +658,23 @@ export async function reservarBloqueCliente(bloqueId, token) {
   }
   return data;
 }
+
+// ==========================================
+// MAESTRO: CAMBIAR ESTADO DE UN BLOQUE (Liberar reserva)
+// ==========================================
+export async function cambiarEstadoBloque(bloqueId, estado, token) {
+  const response = await fetch(`${API_URL}/api/horarios/bloque/${bloqueId}/estado`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ estado })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Error al cambiar el estado del horario.');
+  }
+  return data;
+}

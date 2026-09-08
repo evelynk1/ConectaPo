@@ -12,7 +12,8 @@ import {
   guardarHorariosMasivos,
   obtenerOficios,
   obtenerBloquesHorarios,
-  eliminarBloqueHorario
+  eliminarBloqueHorario,
+  cambiarEstadoBloque // 📍 ¡No olvides importar la nueva función!
 } from '../../services/api';
 
 export default function MiPerfil() {
@@ -30,6 +31,7 @@ export default function MiPerfil() {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showNewServiceModal, setShowNewServiceModal] = useState(false);
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
+  const [showReservationsModal, setShowReservationsModal] = useState(false); // 📍 Modal de Reservas
 
   // ==========================================
   // ESTADOS DE DATOS (PERFIL Y SERVICIOS)
@@ -53,7 +55,7 @@ export default function MiPerfil() {
   const [editServiceFiles, setEditServiceFiles] = useState({ 1: null, 2: null, 3: null });
 
   // ==========================================
-  // ESTADOS DE CALENDARIO
+  // ESTADOS DE CALENDARIO Y RESERVAS
   // ==========================================
   const [isConversable, setIsConversable] = useState(false);
   const [scheduleRange, setScheduleRange] = useState({ start: '', end: '' });
@@ -63,6 +65,11 @@ export default function MiPerfil() {
   const [editScheduleRange, setEditScheduleRange] = useState({ start: '', end: '' });
   const [editGeneratedBlocks, setEditGeneratedBlocks] = useState([]);
   const [existingBlocks, setExistingBlocks] = useState([]);
+
+  // 📍 Estados para gestionar las reservas del cliente
+  const [activePubTitle, setActivePubTitle] = useState('');
+  const [activeReservations, setActiveReservations] = useState([]);
+  const [isLoadingReservations, setIsLoadingReservations] = useState(false);
 
   const MAX_BIO_LENGTH = 500;
 
@@ -121,7 +128,6 @@ export default function MiPerfil() {
   // ==========================================
   // LÓGICA DE ACTUALIZACIÓN DE PERFIL
   // ==========================================
-  // 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -137,7 +143,6 @@ export default function MiPerfil() {
     try {
       let urlAvatarReal = userProfile.avatar;
       if (avatarFile) {
-        console.log("Subiendo avatar a Cloudinary...");
         const uploadRes = await uploadUserAvatar(avatarFile, token);
         urlAvatarReal = uploadRes.avatar_url || uploadRes.url || urlAvatarReal;
       }
@@ -160,7 +165,6 @@ export default function MiPerfil() {
       setShowEditProfileModal(false);
       setAvatarFile(null);
     } catch (error) {
-      console.error("Error al guardar:", error);
       setErrorMsg(error.message || 'Error al actualizar el perfil.');
     } finally {
       setIsSaving(false);
@@ -253,7 +257,46 @@ export default function MiPerfil() {
   }, {});
 
   // ==========================================
-  // GESTIÓN DE SERVICIOS (CREAR)
+  // LÓGICA DEL MODAL DE RESERVAS (NUEVO)
+  // ==========================================
+  const openReservationsModal = async (pub) => {
+    setActivePubTitle(pub.titulo);
+    setShowReservationsModal(true);
+    setIsLoadingReservations(true);
+
+    try {
+      const res = await obtenerBloquesHorarios(pub.id, token);
+      const bloques = Array.isArray(res) ? res : (res.bloques || res.data || []);
+      
+      // Filtramos solo los bloques que están ocupados
+      const reservadas = bloques.filter(b => b.estado === 'RESERVADO');
+      setActiveReservations(reservadas);
+    } catch (err) {
+      alert("Error al cargar las reservas.");
+    } finally {
+      setIsLoadingReservations(false);
+    }
+  };
+
+  const handleCancelReservation = async (bloqueId) => {
+    if (!window.confirm("¿Seguro que deseas cancelar esta reserva? El horario volverá a quedar disponible para otros clientes.")) return;
+    
+    try {
+      await cambiarEstadoBloque(bloqueId, 'DISPONIBLE', token);
+      // Lo sacamos de la lista visual
+      setActiveReservations(prev => prev.filter(b => b.id !== bloqueId));
+    } catch (error) {
+      alert(error.message || 'Error al liberar el horario.');
+    }
+  };
+
+  const formatearFechaHora = (fechaISO) => {
+    const d = new Date(fechaISO);
+    return `${d.toLocaleDateString('es-CL')} a las ${d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  // ==========================================
+  // GESTIÓN DE SERVICIOS (CREAR Y EDITAR)
   // ==========================================
   const handleCreateService = async (e) => {
     e.preventDefault();
@@ -292,20 +335,11 @@ export default function MiPerfil() {
     }
   };
 
-  // ==========================================
-  // GESTIÓN DE SERVICIOS (EDITAR)
-  // ==========================================
   const openEditModal = async (pub) => {
     setEditServiceForm({
-      id: pub.id,
-      titulo: pub.titulo,
-      precio_base: pub.precio_base,
-      oficio_id: pub.oficio_id || '',
-      anos_experiencia: pub.anos_experiencia || 0,
-      descripcion: pub.descripcion,
-      foto_url_1: pub.foto_url_1 || '',
-      foto_url_2: pub.foto_url_2 || '',
-      foto_url_3: pub.foto_url_3 || '',
+      id: pub.id, titulo: pub.titulo, precio_base: pub.precio_base, oficio_id: pub.oficio_id || '',
+      anos_experiencia: pub.anos_experiencia || 0, descripcion: pub.descripcion,
+      foto_url_1: pub.foto_url_1 || '', foto_url_2: pub.foto_url_2 || '', foto_url_3: pub.foto_url_3 || '',
       es_horario_conversable: pub.es_horario_conversable || false
     });
     setEditServiceFiles({ 1: null, 2: null, 3: null });
@@ -315,20 +349,13 @@ export default function MiPerfil() {
 
     try {
       const resBloques = await obtenerBloquesHorarios(pub.id, token);
-
       let bloquesExtraidos = [];
-      if (Array.isArray(resBloques)) {
-        bloquesExtraidos = resBloques;
-      } else if (resBloques && Array.isArray(resBloques.bloques)) {
-        bloquesExtraidos = resBloques.bloques;
-      } else if (resBloques && Array.isArray(resBloques.data)) {
-        bloquesExtraidos = resBloques.data;
-      }
+      if (Array.isArray(resBloques)) bloquesExtraidos = resBloques;
+      else if (resBloques && Array.isArray(resBloques.bloques)) bloquesExtraidos = resBloques.bloques;
+      else if (resBloques && Array.isArray(resBloques.data)) bloquesExtraidos = resBloques.data;
 
       setExistingBlocks(bloquesExtraidos);
     } catch (err) {
-      console.error("Error al cargar bloques:", err);
-      alert("Hubo un problema al cargar los horarios guardados. Revisa la consola.");
       setExistingBlocks([]);
     }
 
@@ -350,12 +377,9 @@ export default function MiPerfil() {
     setErrorMsg(null);
     try {
       await actualizarPublicacionServicio(editServiceForm.id, {
-        titulo: editServiceForm.titulo,
-        descripcion: editServiceForm.descripcion,
-        precio_base: Number(editServiceForm.precio_base),
-        oficio_id: Number(editServiceForm.oficio_id),
-        anos_experiencia: Number(editServiceForm.anos_experiencia),
-        es_horario_conversable: editIsConversable
+        titulo: editServiceForm.titulo, descripcion: editServiceForm.descripcion,
+        precio_base: Number(editServiceForm.precio_base), oficio_id: Number(editServiceForm.oficio_id),
+        anos_experiencia: Number(editServiceForm.anos_experiencia), es_horario_conversable: editIsConversable
       }, token);
 
       if (editServiceFiles[1] || editServiceFiles[2] || editServiceFiles[3]) {
@@ -502,8 +526,11 @@ export default function MiPerfil() {
                             <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
                           </div>
 
-                          {/* Botones de acción por tarjeta */}
-                          <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
+                          {/* 📍 Botones de acción por tarjeta actualizados */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 pt-3 border-t border-slate-50 mt-auto">
+                            <button onClick={() => openReservationsModal(pub)} className="py-1.5 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors cursor-pointer">
+                              📅 Reservas
+                            </button>
                             <button onClick={() => openEditModal(pub)} className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer">✏️ Editar</button>
                             <button onClick={() => toggleServiceStatus(pub)} className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
                               {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
@@ -520,6 +547,77 @@ export default function MiPerfil() {
           </div>
         </div>
       </div>
+
+      {/* ========================================== */}
+      {/* MODAL 4: VER RESERVAS (NUEVO)              */}
+      {/* ========================================== */}
+      {showReservationsModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Reservas Activas</h3>
+                <p className="text-xs text-slate-500">{activePubTitle}</p>
+              </div>
+              <button onClick={() => setShowReservationsModal(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            {isLoadingReservations ? (
+              <p className="text-center text-sm text-slate-500 py-6">Cargando reservas...</p>
+            ) : activeReservations.length === 0 ? (
+              <div className="text-center bg-slate-50 rounded-2xl p-8 border border-slate-100">
+                <span className="text-3xl mb-2 block">📅</span>
+                <p className="text-sm font-semibold text-slate-700">No tienes reservas activas</p>
+                <p className="text-xs text-slate-500 mt-1">Cuando un cliente agende una hora, aparecerá aquí.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeReservations.map(reserva => {
+                  const numTelefono = String(reserva.cliente_telefono || '').replace(/\D/g, '');
+                  const waUrl = numTelefono 
+                    ? `https://wa.me/${numTelefono}?text=${encodeURIComponent(`Hola ${reserva.cliente_nombre}, te contacto por tu reserva de "${activePubTitle}" para el ${formatearFechaHora(reserva.fecha_hora_inicio)}.`)}`
+                    : null;
+
+                  return (
+                    <div key={reserva.id} className="border border-blue-100 bg-blue-50/30 rounded-2xl p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-sm font-bold text-blue-900">
+                            {formatearFechaHora(reserva.fecha_hora_inicio)}
+                          </p>
+                          <p className="text-xs font-semibold text-slate-700 mt-1">
+                            👤 {reserva.cliente_nombre} {reserva.cliente_apellido}
+                          </p>
+                          <p className="text-xs text-slate-500">📞 {reserva.cliente_telefono || 'Sin teléfono registrado'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {waUrl ? (
+                          <a 
+                            href={waUrl} target="_blank" rel="noopener noreferrer"
+                            className="flex justify-center items-center gap-1.5 py-2 rounded-xl text-xs font-bold text-white bg-[#25D366] hover:bg-green-500 transition-colors"
+                          >
+                            WhatsApp
+                          </a>
+                        ) : (
+                          <button disabled className="py-2 rounded-xl text-xs font-bold text-slate-400 bg-slate-200 cursor-not-allowed">Sin WhatsApp</button>
+                        )}
+                        <button 
+                          onClick={() => handleCancelReservation(reserva.id)}
+                          className="py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors cursor-pointer"
+                        >
+                          Liberar hora
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ========================================== */}
       {/* MODAL 1: EDITAR PERFIL                      */}
