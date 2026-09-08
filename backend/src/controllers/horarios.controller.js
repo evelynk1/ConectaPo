@@ -8,10 +8,18 @@ export const obtenerHorariosPorPublicacion = async (req, res) => {
         const { publicacion_id } = req.params;
 
         const query = `
-            SELECT id, fecha_hora_inicio, fecha_hora_fin, estado 
-            FROM negocio.bloques_horarios 
-            WHERE publicacion_id = $1 
-            ORDER BY fecha_hora_inicio ASC;
+            SELECT 
+                bh.id, 
+                bh.fecha_hora_inicio, 
+                bh.fecha_hora_fin, 
+                bh.estado,
+                u.nombres AS cliente_nombre,
+                u.primer_apellido AS cliente_apellido,
+                u.telefono AS cliente_telefono
+            FROM negocio.bloques_horarios bh
+            LEFT JOIN auth.usuarios u ON bh.cliente_id = u.id
+            WHERE bh.publicacion_id = $1 
+            ORDER BY bh.fecha_hora_inicio ASC;
         `;
         const { rows } = await pool.query(query, [publicacion_id]);
 
