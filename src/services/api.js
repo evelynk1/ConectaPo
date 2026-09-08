@@ -644,9 +644,8 @@ export async function resetearPassword(
 // RESERVAR BLOQUE (CLIENTE)
 // ==========================================
 export async function reservarBloqueCliente(bloqueId, token) {
-  // Asegúrate de que '/api/horarios/reservar/' sea la ruta correcta de tu backend
-  const response = await fetch(`${API_URL}/api/horarios/reservar/${bloqueId}`, {
-    method: 'PUT', // o POST, según lo tengas en tus rutas
+  const response = await fetch(`${API_URL}/api/horarios/bloque/${bloqueId}/reservar`, {
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`

@@ -237,7 +237,25 @@ export default function Detalle() {
 
               {/* Botones de acción */}
               <div className="p-5 space-y-3">
-                {whatsappUrl ? (
+                
+                {!user ? (
+                  /* REGLA 1: No está logueado */
+                  <button 
+                    onClick={() => navigate('/login')}
+                    className="w-full py-3.5 rounded-xl font-semibold text-white text-sm bg-slate-800 hover:bg-slate-700 transition-all shadow-sm"
+                  >
+                    Inicia sesión para contactar
+                  </button>
+                ) : (bloquesDisponibles.length > 0 && !bloqueSeleccionado) ? (
+                  /* REGLA 2: Hay horarios, pero no ha seleccionado nada */
+                  <button 
+                    disabled
+                    className="w-full py-3.5 rounded-xl font-semibold text-slate-400 text-sm bg-slate-200 cursor-not-allowed"
+                  >
+                    Selecciona un horario para contactar
+                  </button>
+                ) : whatsappUrl ? (
+                  /* REGLA 3: Logueado y con horario seleccionado (o sin calendario) */
                   <a 
                     href={whatsappUrl}
                     target="_blank" 
@@ -250,7 +268,10 @@ export default function Detalle() {
                     Contactar por WhatsApp
                   </a>
                 ) : (
-                  <p className="w-full py-3.5 rounded-xl text-center bg-slate-100 text-slate-500 text-sm">Este profesional no ha registrado un teléfono.</p>
+                  /* Si el profesional no registró teléfono */
+                  <p className="w-full py-3.5 rounded-xl text-center bg-slate-100 text-slate-500 text-sm">
+                    Este profesional no ha registrado un teléfono.
+                  </p>
                 )}
                 
                 <button onClick={() => navigate('/galeria')} className="w-full py-2.5 rounded-xl text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
