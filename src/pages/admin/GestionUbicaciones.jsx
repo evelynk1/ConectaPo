@@ -1,5 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useUser } from '../../context/useUser'
+
+import {
+  getRegions,
+  getCities,
+  getCommunes,
+  createCommune,
+  deleteCommune,
+} from '../../services/api'
 
 const INITIAL_LOCATIONS = [
   { id: 1, region: 'Región de Los Ríos', comuna: 'Valdivia', activeUsers: 420, villa: 'Pampa Teja' },
@@ -30,7 +39,31 @@ const COMUNAS_POR_REGION = {
 
 export default function GestionUbicaciones() {
   const navigate = useNavigate() 
-  const [locations, setLocations] = useState(INITIAL_LOCATIONS)
+  const { token } = useUser()
+  const [regions, setRegions] = useState([])
+  const [cities, setCities] = useState([])
+  const [communes, setCommunes] = useState([])
+
+  useEffect(() => {
+  const loadLocations = async () => {
+    try {
+      const [regionsData, citiesData, communesData] = await Promise.all([
+        getRegions(),
+        getCities(),
+        getCommunes(),
+      ])
+
+      setRegions(Array.isArray(regionsData) ? regionsData : [])
+      setCities(Array.isArray(citiesData) ? citiesData : [])
+      setCommunes(Array.isArray(communesData) ? communesData : [])
+    } catch (error) {
+      console.error('Error cargando ubicaciones:', error)
+    }
+  }
+
+  loadLocations()
+  }, [])
+
   const [searchTerm, setSearchTerm] = useState('')
   const [newRegion, setNewRegion] = useState('')
   const [newComuna, setNewComuna] = useState('')

@@ -112,6 +112,33 @@ export function deleteTrade(id, token) {
   })
 }
 
+export function getRegions() {
+  return request('/api/ubicaciones/regiones')
+}
+
+export function getCities() {
+  return request('/api/ubicaciones/ciudades')
+}
+
+export function getCommunes() {
+  return request('/api/ubicaciones/comunas')
+}
+
+export function createCommune(commune, token) {
+  return request('/api/ubicaciones/comunas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify(commune),
+  })
+}
+
+export function deleteCommune(id, token) {
+  return request(`/api/ubicaciones/comunas/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders(token) },
+  })
+}
+
 export async function getPublications() {
   const data = await request('/api/publicaciones')
 
