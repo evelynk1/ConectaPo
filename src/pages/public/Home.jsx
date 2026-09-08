@@ -1,78 +1,225 @@
+
 import { useEffect, useState } from 'react'
+
 import { useNavigate } from 'react-router-dom'
-import { CATEGORIES } from '../../data/services'
+
 import ServiceCard from '../../components/ServiceCard'
-import { getPublications, normalizePublication } from '../../services/api'
+
+import {
+  getPublications,
+  normalizePublication,
+  getTrades,
+} from '../../services/api'
 
 export default function Home() {
   const [search, setSearch] = useState('')
   const [comuna, setComuna] = useState('')
   const [services, setServices] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+
   const navigate = useNavigate()
 
+  // Cargar publicaciones
   useEffect(() => {
     getPublications()
-      .then(publications => setServices(publications.map(normalizePublication)))
-      .catch(() => setServices([]))
+      .then((publications) => {
+        setServices(publications.map(normalizePublication))
+      })
+      .catch(() => {
+        setServices([])
+      })
   }, [])
 
+  // Cargar oficios/categorías desde la API
+  useEffect(() => {
+    getTrades()
+      .then((trades) => {
+        const normalizedTrades = trades
+          .map((oficio) => ({
+            id: oficio.id,
+            label: oficio.nombre,
+            icon: oficio.icono_url || '🛠️',
+          }))
+          .filter((oficio) => oficio.label)
+
+        setCategories(normalizedTrades)
+      })
+      .catch(() => {
+        setCategories([])
+      })
+      .finally(() => {
+        setLoadingCategories(false)
+      })
+  }, [])
+
+  // Buscar
   const handleSearch = (e) => {
     e.preventDefault()
+
     const params = new URLSearchParams()
-    if (search.trim()) params.set('q', search.trim())
-    if (comuna) params.set('comuna', comuna)
+
+    if (search.trim()) {
+      params.set('q', search.trim())
+    }
+
+    if (comuna) {
+      params.set('comuna', comuna)
+    }
 
     const queryString = params.toString()
-    navigate(queryString ? `/galeria?${queryString}` : '/galeria')
+
+    navigate(
+      queryString
+        ? `/galeria?${queryString}`
+        : '/galeria'
+    )
+  }
+
+  // Filtrar por categoría
+  const handleCategoryClick = (label) => {
+    navigate(
+      `/galeria?categoria=${encodeURIComponent(label)}`
+    )
   }
 
   return (
     <div className="min-h-[calc(100vh-4rem)]">
-      {/* Hero */}
-      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563EB 60%, #3b82f6 100%)' }}>
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+
+      {/* =====================================================
+          HERO
+      ===================================================== */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(135deg, #1d4ed8 0%, #2563EB 60%, #3b82f6 100%)',
+        }}
+      >
+        {/* Patrón de fondo */}
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+            backgroundSize: '32px 32px',
+          }}
+        />
+
         <div className="relative max-w-6xl mx-auto px-4 py-20 md:py-28">
           <div className="max-w-2xl">
+
+            {/* Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6 bg-white/20 text-white backdrop-blur-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+
               +2.400 profesionales activos en Chile
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6"
-              style={{ fontFamily: 'Plus Jakarta Sans' }}>
-              Encuentra el<br />
-              <span style={{ color: '#FED7AA' }}>profesional ideal</span><br />
+
+            {/* Título */}
+            <h1
+              className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6"
+              style={{ fontFamily: 'Plus Jakarta Sans' }}
+            >
+              Encuentra el
+              <br />
+
+              <span style={{ color: '#FED7AA' }}>
+                profesional ideal
+              </span>
+
+              <br />
+
               para tu hogar
             </h1>
+
+            {/* Descripción */}
             <p className="text-blue-100 text-lg mb-10 leading-relaxed">
-              Conecta con gasfiteros, electricistas, carpinteros y más oficios en tu comuna. Rápido, seguro y confiable.
+              Conecta con gasfiteros, electricistas, carpinteros y más
+              oficios en tu comuna. Rápido, seguro y confiable.
             </p>
 
-            <form onSubmit={handleSearch} className="bg-white rounded-2xl p-2 shadow-2xl flex flex-col sm:flex-row gap-2">
+            {/* Buscador */}
+            <form
+              onSubmit={handleSearch}
+              className="bg-white rounded-2xl p-2 shadow-2xl flex flex-col sm:flex-row gap-2"
+            >
+
+              {/* Servicio */}
               <div className="flex items-center gap-3 flex-1 px-4 py-2 rounded-xl bg-slate-50">
-                <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+
+                <svg
+                  className="w-5 h-5 text-slate-400 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
-                <input value={search} onChange={e => setSearch(e.target.value)}
+
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                   placeholder="¿Qué servicio necesitas?"
-                  className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 text-sm outline-none" />
+                  className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 text-sm outline-none"
+                />
               </div>
+
+              {/* Comuna */}
               <div className="flex items-center gap-3 sm:w-44 px-4 py-2 rounded-xl bg-slate-50">
-                <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+
+                <svg
+                  className="w-5 h-5 text-slate-400 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
                 </svg>
-                <select value={comuna} onChange={e => setComuna(e.target.value)}
-                  className="flex-1 bg-transparent text-sm text-slate-600 outline-none cursor-pointer">
-                  <option value="">Toda Chile</option>
-                  {['Santiago', 'Providencia', 'Las Condes', 'Maipú', 'Ñuñoa', 'Vitacura', 'La Florida', 'Valdivia'].map(c => (
-                    <option key={c} value={c}>{c}</option>
+
+                <select
+                  value={comuna}
+                  onChange={(e) => setComuna(e.target.value)}
+                  className="flex-1 bg-transparent text-sm text-slate-600 outline-none cursor-pointer"
+                >
+                  <option value="">
+                    Toda Chile
+                  </option>
+
+                  {[
+                    'Santiago',
+                    'Providencia',
+                    'Las Condes',
+                    'Maipú',
+                    'Ñuñoa',
+                    'Vitacura',
+                    'La Florida',
+                    'Valdivia',
+                  ].map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              <button type="submit"
+              {/* Botón buscar */}
+              <button
+                type="submit"
                 className="px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg shrink-0 cursor-pointer"
-                style={{ background: '#F97316' }}>
+                style={{ background: '#F97316' }}
+              >
                 Buscar
               </button>
             </form>
@@ -80,65 +227,186 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categorias */}
+      {/* =====================================================
+          CATEGORÍAS
+      ===================================================== */}
       <section className="max-w-6xl mx-auto px-4 py-16">
+
         <div className="flex items-end justify-between mb-8">
+
           <div>
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1">Categorías</p>
-            <h2 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>¿Qué necesitas hoy?</h2>
+            <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1">
+              Servicios
+            </p>
+
+            <h2
+              className="text-2xl md:text-3xl font-bold text-slate-900"
+              style={{ fontFamily: 'Plus Jakarta Sans' }}
+            >
+              ¿Qué necesitas hoy?
+            </h2>
           </div>
-          <button type="button" onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block cursor-pointer">
+
+          <button
+            type="button"
+            onClick={() => navigate('/galeria')}
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block cursor-pointer"
+          >
             Ver todo →
           </button>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
-          {CATEGORIES.map(({ icon, label }) => (
-            <button key={label} type="button" onClick={() => navigate(`/galeria?categoria=${encodeURIComponent(label)}`)}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer">
-              <span className="text-2xl group-hover:scale-110 transition-transform">{icon}</span>
-              <span className="text-xs font-medium text-slate-600 text-center leading-tight">{label}</span>
-            </button>
-          ))}
-        </div>
+
+        {/* Loading */}
+        {loadingCategories ? (
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-24 rounded-2xl bg-slate-100 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : categories.length === 0 ? (
+
+          /* Sin categorías */
+          <div className="py-8 text-center text-sm text-slate-500">
+            No hay oficios disponibles actualmente.
+          </div>
+
+        ) : (
+
+          /* Categorías */
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() =>
+                  handleCategoryClick(category.label)
+                }
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer"
+              >
+                <span className="text-2xl group-hover:scale-110 transition-transform">
+                  {category.icon}
+                </span>
+
+                <span className="text-xs font-medium text-slate-600 text-center leading-tight">
+                  {category.label}
+                </span>
+              </button>
+            ))}
+
+          </div>
+        )}
       </section>
 
-      {/* Featured services */}
+      {/* =====================================================
+          PROFESIONALES DESTACADOS
+      ===================================================== */}
       <section className="bg-slate-50">
+
         <div className="max-w-6xl mx-auto px-4 py-16">
+
           <div className="flex items-end justify-between mb-8">
+
             <div>
-              <p className="text-xs font-semibold text-orange-500 uppercase tracking-widest mb-1">Destacados</p>
-              <h2 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>Servicios recomendados</h2>
+              <p className="text-xs font-semibold text-orange-500 uppercase tracking-widest mb-1">
+                Destacados
+              </p>
+
+              <h2
+                className="text-2xl md:text-3xl font-bold text-slate-900"
+                style={{ fontFamily: 'Plus Jakarta Sans' }}
+              >
+                Profesionales destacados
+              </h2>
             </div>
-            <button type="button" onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block cursor-pointer">
+
+            <button
+              type="button"
+              onClick={() => navigate('/galeria')}
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block cursor-pointer"
+            >
               Ver galería →
             </button>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.slice(0, 3).map(s => (
-              <ServiceCard key={s.id} service={s} />
-            ))}
+
+          {services.length === 0 ? (
+
+            <div className="py-8 text-center text-sm text-slate-500">
+              No hay profesionales disponibles actualmente.
+            </div>
+
+          ) : (
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+              {services.slice(0, 3).map((service) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                />
+              ))}
+
+            </div>
+          )}
+
+        </div>
+      </section>
+
+      {/* =====================================================
+          BANNER PARA PROFESIONALES
+      ===================================================== */}
+      <section className="max-w-6xl mx-auto px-4 py-16">
+
+        <div
+          className="rounded-3xl overflow-hidden relative"
+          style={{
+            background:
+              'linear-gradient(135deg, #F97316, #fb923c)',
+          }}
+        >
+
+          {/* Patrón */}
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+
+          <div className="relative px-8 md:px-16 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
+
+            <div className="text-white">
+
+              <h2
+                className="text-2xl md:text-3xl font-extrabold mb-2"
+                style={{ fontFamily: 'Plus Jakarta Sans' }}
+              >
+                ¿Eres un profesional?
+              </h2>
+
+              <p className="text-orange-100 text-sm md:text-base">
+                Publica tus servicios y conecta con miles de clientes en Chile.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/registro')}
+              className="px-8 py-3.5 bg-white rounded-xl font-bold text-orange-500 hover:shadow-xl transition-all hover:scale-105 shrink-0 text-sm cursor-pointer"
+            >
+              Comenzar ahora
+            </button>
+
           </div>
         </div>
       </section>
 
-      {/* banner */}
-      <section className="max-w-6xl mx-auto px-4 py-16">
-        <div className="rounded-3xl overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #F97316, #fb923c)' }}>
-          <div className="absolute inset-0 opacity-10"
-            style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-          <div className="relative px-8 md:px-16 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="text-white">
-              <h2 className="text-2xl md:text-3xl font-extrabold mb-2" style={{ fontFamily: 'Plus Jakarta Sans' }}>¿Eres un profesional?</h2>
-              <p className="text-orange-100 text-sm md:text-base">Publica tus servicios y conecta con miles de clientes en Chile.</p>
-            </div>
-            <button type="button" onClick={() => navigate('/registro')}
-              className="px-8 py-3.5 bg-white rounded-xl font-bold text-orange-500 hover:shadow-xl transition-all hover:scale-105 shrink-0 text-sm cursor-pointer">
-              Comenzar ahora
-            </button>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }
