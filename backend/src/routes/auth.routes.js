@@ -4,10 +4,11 @@ import {
   loginUsuario,
   obtenerPerfil,
   actualizarPerfil,
-  desactivarUsuario
+  desactivarUsuario,
+  solicitarRecuperacion, // <-- Importados una sola vez
+  resetearPassword
 } from '../controllers/auth.controller.js';
 import { verificarToken, autorizarRoles } from '../middlewares/auth.middleware.js';
-import { solicitarRecuperacion, resetearPassword } from '../controllers/auth.controller.js';
 
 const router = Router();
 
@@ -27,9 +28,10 @@ router.get('/admin-dashboard', verificarToken, autorizarRoles('ADMIN'), (req, re
   res.json({ mensaje: 'Panel de administración exclusivo' });
 });
 
-// RUTAS DE RECUPERACIÓN
-router.post('/recuperar-password', solicitarRecuperacion);
-router.put('/resetear-password', resetearPassword);
-
+// ==========================================
+// RUTAS DE RECUPERACIÓN (Conectadas al Frontend)
+// ==========================================
+router.post('/solicitar-recuperacion', solicitarRecuperacion);
+router.post('/resetear-password', resetearPassword);
 
 export default router;
