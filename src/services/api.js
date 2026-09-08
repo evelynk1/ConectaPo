@@ -191,7 +191,7 @@ export function normalizePublication(publication = {}) {
       publication.oficio_nombre ||
       'Servicio profesional',
 
-comuna: publication.comuna_nombre || 'Chile',
+    comuna: publication.comuna_nombre || 'Chile',
 
     rating:
       Number(publication.evaluacion_promedio || 0),

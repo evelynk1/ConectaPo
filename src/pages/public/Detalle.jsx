@@ -9,13 +9,21 @@ export default function Detalle() {
   const [service, setService] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  
+  // 📸 NUEVO: Estado para manejar qué imagen se está viendo en grande
+  const [imagenActiva, setImagenActiva] = useState(null)
 
   useEffect(() => {
     let active = true
 
     getPublication(id)
       .then((publication) => {
-        if (active) setService(normalizePublication(publication))
+        if (active) {
+          const normalized = normalizePublication(publication)
+          setService(normalized)
+          // Seteamos la imagen principal por defecto al cargar
+          setImagenActiva(normalized.image)
+        }
       })
       .catch((requestError) => {
         if (active) setError(requestError.message || 'No fue posible cargar esta publicación.')
@@ -46,10 +54,13 @@ export default function Detalle() {
     ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hola ${s.name}, vi tu publicación "${s.titulo || s.trade}" en ConectaPo y me gustaría cotizar un servicio.`)}`
     : null
 
+  // 📸 NUEVO: Agrupamos las fotos. Usamos filter(Boolean) para eliminar los null si el profesional subió solo 1 o 2 fotos.
+  const fotosGaleria = [s.image, s.foto_url_2, s.foto_url_3].filter(Boolean)
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50">
       
-      {/* MIGAS DE PAN (Breadcrumbs) - Fijas justo debajo del Navbar principal (altura del nav ~64px = top-16) */}
+      {/* MIGAS DE PAN (Breadcrumbs) */}
       <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-2 text-xs text-slate-400">
           <button onClick={() => navigate('/')} className="hover:text-blue-600 transition-colors">Inicio</button>
@@ -66,9 +77,35 @@ export default function Detalle() {
           {/* Columna Izquierda: Imagen, Información principal, Descripción y Estrellas */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Imagen destacada del servicio */}
-            <div className="rounded-3xl overflow-hidden h-72 md:h-96 bg-slate-100 relative shadow-sm">
-              <img src={s.image} alt={s.titulo || s.trade} className="w-full h-full object-cover" />
+            {/* 📸 NUEVO: Galería interactiva */}
+            <div className="space-y-3">
+              {/* Imagen Grande */}
+              <div className="rounded-3xl overflow-hidden h-72 md:h-[450px] bg-slate-100 relative shadow-sm">
+                <img 
+                  src={imagenActiva} 
+                  alt={s.titulo || s.trade} 
+                  className="w-full h-full object-cover transition-opacity duration-300" 
+                />
+              </div>
+              
+              {/* Miniaturas (Se muestran solo si hay más de 1 foto) */}
+              {fotosGaleria.length > 1 && (
+                <div className="flex items-center gap-3">
+                  {fotosGaleria.map((foto, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setImagenActiva(foto)}
+                      className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 transition-all duration-200 focus:outline-none ${
+                        imagenActiva === foto 
+                          ? 'border-blue-600 opacity-100 shadow-md ring-2 ring-blue-100' 
+                          : 'border-transparent opacity-60 hover:opacity-100 hover:border-slate-300'
+                      }`}
+                    >
+                      <img src={foto} alt={`Vista previa ${index + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Cabecera del profesional */}
@@ -110,7 +147,7 @@ export default function Detalle() {
             {/* Descripción detallada y garantías */}
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h2 className="font-semibold text-slate-900 mb-3">Descripción del servicio</h2>
-              <p className="text-sm text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
                 {s.descripcion || 'El profesional aún no ha agregado una descripción para este servicio.'}
               </p>
               <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -162,7 +199,7 @@ export default function Detalle() {
                 </div>
               </div>
 
-              {/* Cuadro de disponibilidad del servicio (Fijo dentro del panel lateral) */}
+              {/* Cuadro de disponibilidad del servicio */}
               <div className="p-5 border-b border-slate-100">
                 <p className="text-xs font-semibold text-slate-700 mb-2">Disponibilidad del servicio</p>
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 leading-relaxed">
@@ -191,7 +228,7 @@ export default function Detalle() {
                   </p>
                 )}
                 
-                <button onClick={() => navigate('/galeria')} className="w-full py-2.5 rounded-xl text-xs text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={() => navigate('/galeria')} className="w-full py-2.5 rounded-xl text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
                   ← Volver a la galería
                 </button>
               </div>
