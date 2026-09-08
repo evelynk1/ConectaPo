@@ -10,33 +10,6 @@ import {
   deleteCommune,
 } from '../../services/api'
 
-const INITIAL_LOCATIONS = [
-  { id: 1, region: 'Región de Los Ríos', comuna: 'Valdivia', activeUsers: 420, villa: 'Pampa Teja' },
-  { id: 2, region: 'Región de O\'Higgins', comuna: 'Rancagua', activeUsers: 310, villa: 'Manzanal' },
-  { id: 3, region: 'Región Metropolitana', comuna: 'Santiago Centro', activeUsers: 1250, villa: 'Barrio Yungay' },
-  { id: 4, region: 'Región de Valparaíso', comuna: 'Viña del Mar', activeUsers: 280, villa: 'Reñaca' },
-  { id: 5, region: 'Región del Biobío', comuna: 'Concepción', activeUsers: 195, villa: 'Lomas de San Andrés' },
-]
-
-// Opciones predefinidas para regiones y comunas
-const REGIONES_CHILE = [
-  'Región de Los Ríos',
-  'Región de O\'Higgins',
-  'Región Metropolitana',
-  'Región de Valparaíso',
-  'Región del Biobío',
-  'Región de La Araucanía'
-]
-
-const COMUNAS_POR_REGION = {
-  'Región de Los Ríos': ['Valdivia', 'La Unión', 'Río Bueno', 'Panguipulli', 'Lanco'],
-  'Región de O\'Higgins': ['Rancagua', 'Machalí', 'Rengo', 'San Fernando', 'Santa Cruz'],
-  'Región Metropolitana': ['Santiago Centro', 'Providencia', 'Las Condes', 'Maipú', 'Ñuñoa', 'La Florida'],
-  'Región de Valparaíso': ['Valparaíso', 'Viña del Mar', 'Concón', 'Quilpué', 'Villa Alemana'],
-  'Región del Biobío': ['Concepción', 'Talcahuano', 'San Pedro de la Paz', 'Chiguayante', 'Los Ángeles'],
-  'Región de La Araucanía': ['Temuco', 'Padre Las Casas', 'Villarrica', 'Pucón']
-}
-
 export default function GestionUbicaciones() {
   const navigate = useNavigate() 
   const { token } = useUser()
@@ -66,45 +39,87 @@ export default function GestionUbicaciones() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [newRegion, setNewRegion] = useState('')
+  const [newCity, setNewCity] = useState('')
   const [newComuna, setNewComuna] = useState('')
   const [newVilla, setNewVilla] = useState('')
 
-  // Al cambiar de región, reseteamos la comuna seleccionada para mantener consistencia
+  // Al cambiar de región, reseteamos la ciudad y comuna seleccionadas para mantener consistencia
   const handleRegionChange = (e) => {
     setNewRegion(e.target.value)
+    setNewCity('')
     setNewComuna('')
   }
 
-  const handleAddLocation = (e) => {
-    e.preventDefault()
-    if (!newRegion.trim() || !newComuna.trim()) return
-
-    const newEntry = {
-      id: Date.now(),
-      region: newRegion.trim(),
-      comuna: newComuna.trim(),
-      activeUsers: 0,
-      villa: newVilla.trim() || 'Sector General',
-    }
-
-    setLocations([newEntry, ...locations])
-    setNewRegion('')
+  // Al cambiar de ciudad, reseteamos la comuna
+  const handleCityChange = (e) => {
+    setNewCity(e.target.value)
     setNewComuna('')
-    setNewVilla('')
   }
 
-  const handleDelete = (id) => {
-    setLocations(locations.filter(l => l.id !== id))
-  }
-
-  const filteredLocations = locations.filter(l => 
-    l.comuna.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    l.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    l.villa.toLowerCase().includes(searchTerm.toLowerCase())
+  // Obtenemos las ciudades pertenecientes a la región seleccionada
+  const ciudadesDisponibles = cities.filter(
+    (city) => String(city.region_id) === String(newRegion)
   )
 
-  // Obtenemos las comunas de la región seleccionada (o un arreglo vacío si no hay región elegida)
-  const comunasDisponibles = newRegion ? COMUNAS_POR_REGION[newRegion] || [] : []
+  const handleAddLocation = async (e) => {
+    e.preventDefault()
+    if (!newRegion || !newCity || !newComuna.trim()) return
+
+    try {
+      const response = await createCommune(
+        {
+          ciudad_id: Number(newCity),
+          nombre: newComuna.trim(),
+        },
+        token
+      )
+
+      if (response?.comuna) {
+        setCommunes((prev) => [...prev, response.comuna])
+      }
+
+      setNewRegion('')
+      setNewCity('')
+      setNewComuna('')
+      setNewVilla('')
+    } catch (error) {
+      console.error('Error creando comuna:', error)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteCommune(id, token)
+      setCommunes((prev) => prev.filter((commune) => commune.id !== id))
+    } catch (error) {
+      console.error('Error eliminando comuna:', error)
+    }
+  }
+
+  const locations = communes.map((commune) => {
+    const city = cities.find(
+      (item) => String(item.id) === String(commune.ciudad_id)
+    )
+
+    const region = regions.find(
+      (item) => String(item.id) === String(city?.region_id)
+    )
+
+    return {
+      id: commune.id,
+      comuna: commune.nombre,
+      ciudad: city?.nombre || 'Sin ciudad',
+      region: region?.nombre || 'Sin región',
+      villa: '—',
+      activeUsers: 0,
+    }
+  })
+
+  const filteredLocations = locations.filter((l) =>
+    l.comuna.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    l.ciudad.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    l.region.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   return (
     <div className="p-6 space-y-6 bg-slate-100 min-h-full">
@@ -137,7 +152,7 @@ export default function GestionUbicaciones() {
           <h2 className="font-bold text-slate-950 text-lg mb-4">Agregar nueva ubicación</h2>
           <form onSubmit={handleAddLocation} className="space-y-4">
             
-            {/* Menú desplegable para Región */}
+        {/* Menú desplegable para Región */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Región *</label>
               <select
@@ -146,26 +161,39 @@ export default function GestionUbicaciones() {
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
               >
                 <option value="">Selecciona una región...</option>
-                {REGIONES_CHILE.map((reg) => (
-                  <option key={reg} value={reg}>{reg}</option>
+                {regions.map((reg) => (
+                  <option key={reg.id} value={reg.id}>{reg.nombre}</option>
                 ))}
               </select>
             </div>
 
-            {/* Menú desplegable para Comuna / Ciudad */}
+            {/* Menú desplegable para Ciudad */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Comuna / Ciudad *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Ciudad *</label>
               <select
-                value={newComuna}
-                onChange={(e) => setNewComuna(e.target.value)}
+                value={newCity}
+                onChange={handleCityChange}
                 disabled={!newRegion}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
               >
-                <option value="">{newRegion ? 'Selecciona una comuna...' : 'Primero selecciona una región'}</option>
-                {comunasDisponibles.map((com) => (
-                  <option key={com} value={com}>{com}</option>
+                <option value="">{newRegion ? 'Selecciona una ciudad...' : 'Primero selecciona una región'}</option>
+                {ciudadesDisponibles.map((city) => (
+                  <option key={city.id} value={city.id}>{city.nombre}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Input para Comuna */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Comuna *</label>
+              <input
+                type="text"
+                value={newComuna}
+                onChange={(e) => setNewComuna(e.target.value)}
+                disabled={!newCity}
+                placeholder={newCity ? 'Ej. Valdivia' : 'Primero selecciona una ciudad'}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+              />
             </div>
 
             {/* Input normal para Villa / Población */}
