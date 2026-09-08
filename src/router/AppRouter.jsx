@@ -12,6 +12,9 @@ import Galeria from '../pages/public/Galeria';
 import Detalle from '../pages/public/Detalle';
 import Login from '../pages/public/Login';
 import Registro from '../pages/public/Registro';
+import Contacto from '../pages/public/Contacto';
+import Terminos from '../pages/public/Terminos';
+import Privacidad from '../pages/public/Privacidad';
 
 // Páginas Privadas (Usuarios)
 import MiPerfil from '../pages/private/MiPerfil';
@@ -26,6 +29,7 @@ import ResolucionTickets from '../pages/admin/ResolucionTickets';
 
 // Errores
 import NotFound404 from '../pages/error/NotFound404';
+
 
 // Componente para proteger rutas según el rol
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -57,6 +61,9 @@ export default function AppRouter() {
                     <Route path="/detalle/:id" element={<Detalle />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/registro" element={<Registro />} />
+                    <Route path="/contacto" element={<Contacto />} />
+                    <Route path="/terminos" element={<Terminos />} />
+                    <Route path="/privacidad" element={<Privacidad />} />
                 </Route>
 
                 {/* ==========================================
