@@ -5,20 +5,18 @@ import Footer from '../components/Footer';
 const PublicLayout = () => {
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
-            {/* Le quitamos el sticky al header porque el Navbar ya lo tiene */}
-            <header>
-                <Navbar />
-            </header>
+            {/* Navbar fijo superior */}
+            <Navbar />
 
-            <main className="flex-grow p-4">
+            {/* Contenido principal con padding superior para compensar el navbar fijo */}
+            <main className="flex-grow pt-16 p-4">
                 <Outlet />
             </main>
 
-            <footer className="bg-gray-800 text-white p-4 text-center">
-                <Footer />
-            </footer>
+            {/* Pie de página */}
+            <Footer />
         </div>
-    )
-}
+    );
+};
 
 export default PublicLayout;

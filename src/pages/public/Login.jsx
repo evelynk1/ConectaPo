@@ -1,50 +1,52 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ConectaPoLogo from '../../components/Logo';
-import { useUser } from '../../context/useUser'; // <-- el hook del contexto
+import { useUser } from '../../context/useUser'; // Asegúrate de que esta ruta sea correcta
+import { loginUser } from '../../services/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
-  const navigate = useNavigate();
 
-  // const { login } = useUser(); // <-- 2. Extraemos la función login
+  // NUEVOS ESTADOS DE CONTROL
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const navigate = useNavigate();
+  const { login } = useUser();
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    // 1. Limpiamos errores previos y bloqueamos el botón
+    setErrorMsg(null);
+    setIsLoading(true);
+
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password: pass }),
-      });
+      // 2. Disparamos la petición real al backend
+      const { user, token } = await loginUser({ email, password: pass });
 
-      const data = await response.json();
+      // 3. Guardamos en el contexto seguro
+      login(user, token);
 
-      if (!response.ok) {
-        throw new Error(data.mensaje || 'Error al iniciar sesión');
-      }
-
-      // Guardamos el usuario real y el token devueltos por tu backend
-      login(data.user, data.token);
-
-      // Redirigimos según el rol que venga de la base de datos
-      if (data.user.rol === 'ADMIN') {
+      // 4. Redirección
+      if (user.rol === 'ADMIN') {
         navigate('/admin');
       } else {
         navigate('/panel/perfil');
       }
     } catch (error) {
-      alert(error.message);
+      // 5. Atrapamos el error de la API y lo mostramos en la UI, no en un alert()
+      setErrorMsg(error.message || 'Error inesperado al iniciar sesión.');
+    } finally {
+      // 6. Pase lo que pase (éxito o fallo), liberamos el botón
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex">
-      {/* Columna Izquierda: Banner decorativo (Se mantiene igual) */}
+      {/* COLUMNA IZQUIERDA: Intacta */}
       <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 bg-blue-800"
         style={{ background: 'linear-gradient(145deg, #1e40af, #2563EB)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '28px 28px' }} />
@@ -55,7 +57,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Columna Derecha: Formulario */}
+      {/* COLUMNA DERECHA: Formulario */}
       <div className="flex-1 flex items-center justify-center px-4 py-12 bg-white">
         <div className="w-full max-w-md">
           <div className="mb-8">
@@ -66,6 +68,13 @@ export default function Login() {
             </p>
           </div>
 
+          {/* MANEJO DE ERRORES VISUAL */}
+          {errorMsg && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium">
+              ❌ {errorMsg}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Correo electrónico</label>
@@ -73,30 +82,44 @@ export default function Login() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 type="email"
+                disabled={isLoading}
                 placeholder="tuemail@ejemplo.cl"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-50 disabled:bg-slate-50"
                 required
               />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">Contraseña</label>
-                <button type="button" className="text-xs text-blue-600 hover:text-blue-700 font-medium">¿Olvidaste tu contraseña?</button>
+                <button type="button" className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50">
+                  ¿Olvidaste tu contraseña?
+                </button>
               </div>
               <input
                 value={pass}
                 onChange={e => setPass(e.target.value)}
                 type="password"
+                disabled={isLoading}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-50 disabled:bg-slate-50"
                 required
               />
             </div>
 
+            {/* BOTÓN CON ESTADO DE CARGA */}
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all bg-blue-600 hover:bg-blue-700 hover:shadow-lg">
-              Iniciar sesión
+              disabled={isLoading}
+              className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all bg-blue-600 hover:bg-blue-700 hover:shadow-lg flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  Iniciando sesión...
+                </>
+              ) : (
+                'Iniciar sesión'
+              )}
             </button>
           </form>
         </div>

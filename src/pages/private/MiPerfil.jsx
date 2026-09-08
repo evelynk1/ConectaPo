@@ -1,646 +1,895 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import ConectaPoLogo from '../../components/Logo'
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '../../context/useUser';
+import { 
+  getUserProfile, 
+  updateUserProfile, 
+  uploadUserAvatar, 
+  obtenerMisPublicaciones, 
+  crearPublicacionServicio, 
+  actualizarPublicacionServicio,
+  eliminarPublicacionServicio,
+  subirFotosServicio,           // <-- IMPORTANTE: Nueva función importada
+  guardarHorariosMasivos,
+  obtenerOficios,
+  obtenerBloquesHorarios, 
+  eliminarBloqueHorario
+} from '../../services/api';
 
 export default function MiPerfil() {
-  const navigate = useNavigate()
-  
-  // Estado para el menú móvil del Navbar
-  const [menuOpen, setMenuOpen] = useState(false)
-  const closeMenu = () => setMenuOpen(false)
+  const navigate = useNavigate();
+  const { token } = useUser();
 
-  // Estados para controlar los modales
-  const [showNewServiceModal, setShowNewServiceModal] = useState(false)
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(false)
+  // ==========================================
+  // ESTADOS GENERALES Y DE CONTROL
+  // ==========================================
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingService, setIsCreatingService] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  // Estado del Modo Vacaciones
-  const [isVacation, setIsVacation] = useState(false)
+  // Control de Modales
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showNewServiceModal, setShowNewServiceModal] = useState(false);
+  const [showEditServiceModal, setShowEditServiceModal] = useState(false);
 
-  // Estado para los datos del perfil del usuario (con campo de habilidades como string para el input)
-  const [userProfile, setUserProfile] = useState({
-    name: 'Carlos Mendoza',
-    title: 'Gasfitero certificado',
-    location: 'Providencia, Santiago',
-    email: 'carlos.mendoza@gmail.com',
-    phone: '+56 9 8765 4321',
-    experience: '12 años de experiencia',
-    bio: 'Gasfitero certificado con más de 12 años de experiencia en instalaciones residenciales y comerciales. Especialista en detección de fugas, instalación de cañerías y reparación de artefactos sanitarios. Trabajo con garantía y materiales de primera calidad.',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=128&h=128&fit=crop&auto=format',
-    skills: 'Gasfitería, Plomería, Instalaciones, Emergencias, Detección de fugas'
-  })
+  // ==========================================
+  // ESTADOS DE DATOS (PERFIL Y SERVICIOS)
+  // ==========================================
+  const [userProfile, setUserProfile] = useState({});
+  const [editForm, setEditForm] = useState({});
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [services, setServices] = useState([]);
+  const [oficios, setOficios] = useState([]);
 
-  // Estado temporal para el formulario de edición de perfil
-  const [editForm, setEditForm] = useState(userProfile)
+  // Formulario y Archivos Físicos (CREAR)
+  const [newServiceForm, setNewServiceForm] = useState({
+    titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: ''
+  });
+  const [newServiceFiles, setNewServiceFiles] = useState({ 1: null, 2: null, 3: null }); // <-- Para guardar el archivo File real
 
-  // Estado para los datos de inicio de sesión (si se llega a usar desde los modales)
-  const [loginData, setLoginData] = useState({ email: '', password: '' })
-  
-  // Estado para la lista de servicios (con propiedad 'status' para pausar/eliminar)
-  const [services, setServices] = useState([
-    { 
-      id: 1, 
-      title: 'Instalación de Grifería y Sanitarios', 
-      price: '$25.000', 
-      cat: 'Gasfitería', 
-      desc: 'Servicio profesional garantizado en zona oriente.',
-      image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop',
-      status: 'activo'
-    },
-    { 
-      id: 2, 
-      title: 'Detección y Reparación de Fugas', 
-      price: '$40.000', 
-      cat: 'Urgencias', 
-      desc: 'Equipo especializado para ubicar fugas ocultas.',
-      image: 'https://images.unsplash.com/photo-1542013936693-893e3d6e1c2b?w=400&h=300&fit=crop',
-      status: 'activo'
+  // Formulario y Archivos Físicos (EDITAR)
+  const [editServiceForm, setEditServiceForm] = useState({
+    id: null, titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '', es_horario_conversable: false
+  });
+  const [editServiceFiles, setEditServiceFiles] = useState({ 1: null, 2: null, 3: null }); // <-- Para guardar el archivo File real
+
+  // ==========================================
+  // ESTADOS DE CALENDARIO
+  // ==========================================
+  const [isConversable, setIsConversable] = useState(false);
+  const [scheduleRange, setScheduleRange] = useState({ start: '', end: '' });
+  const [generatedBlocks, setGeneratedBlocks] = useState([]);
+
+  const [editIsConversable, setEditIsConversable] = useState(false);
+  const [editScheduleRange, setEditScheduleRange] = useState({ start: '', end: '' });
+  const [editGeneratedBlocks, setEditGeneratedBlocks] = useState([]);
+  const [existingBlocks, setExistingBlocks] = useState([]);
+
+  const MAX_BIO_LENGTH = 500;
+
+  // ==========================================
+  // EFECTO INICIAL: CARGAR PERFIL Y SERVICIOS
+  // ==========================================
+  const fetchAllData = async () => {
+    try {
+      setIsLoading(true);
+      const oficiosData = await obtenerOficios();
+      setOficios(oficiosData.oficios || []);
+
+      const dbData = await getUserProfile(token);
+      const avatarUrl = dbData.avatar_url || `https://ui-avatars.com/api/?background=2563eb&color=fff&name=${encodeURIComponent(dbData.nombres || 'Usuario')}`;
+
+      const fullProfile = {
+        nombres: dbData.nombres || '',
+        primer_apellido: dbData.primer_apellido || '',
+        segundo_apellido: dbData.segundo_apellido || '',
+        email: dbData.email || '',
+        telefono: dbData.telefono || '',
+        genero: dbData.genero || '',
+        instagram_url: dbData.instagram_url || '',
+        facebook_url: dbData.facebook_url || '',
+        avatar: avatarUrl,
+        rol: dbData.rol,
+        titulo_oficio: dbData.titulo_oficio || 'Profesional independiente',
+        experiencia: dbData.experiencia || 'Aún sin información',
+        biografia: dbData.biografia || '',
+        location: 'Chile',
+        skills: 'Aún no registradas'
+      };
+
+      setUserProfile(fullProfile);
+      setEditForm(fullProfile);
+
+      const pubData = await obtenerMisPublicaciones(token);
+      const pubsConEstado = (pubData.publicaciones || []).map(p => ({ ...p, estado: p.estado || 'ACTIVA' }));
+      setServices(pubsConEstado);
+
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+    } finally {
+      setIsLoading(false);
     }
-  ])
+  };
 
-  // Estado para el formulario de nuevo servicio
-  const [newService, setNewService] = useState({ 
-    title: '', 
-    price: '', 
-    cat: 'Gasfitería', 
-    desc: '', 
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop' 
-  })
+  useEffect(() => {
+    if (token) fetchAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
-  // Funciones de subida de imágenes
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setNewService({ ...newService, image: imageUrl })
-    }
-  }
-
+ // ==========================================
+  // LÓGICA DE ACTUALIZACIÓN DE PERFIL
+  // ==========================================
   const handleAvatarChange = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setEditForm({ ...editForm, avatar: imageUrl })
+      setAvatarFile(file);
+      setEditForm({ ...editForm, avatar: URL.createObjectURL(file) });
     }
-  }
+  };
 
-  const handleCreateService = (e) => {
-    e.preventDefault()
-    if (!newService.title || !newService.price) return
-
-    setServices([...services, { id: Date.now(), ...newService, status: 'activo' }])
-    setNewService({ title: '', price: '', cat: 'Gasfitería', desc: '', image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop' })
-    setShowNewServiceModal(false)
-  }
-
-  // Guardar los cambios del perfil
-  const handleSaveProfile = (e) => {
-    e.preventDefault()
-    setUserProfile(editForm)
-    setShowEditProfileModal(false)
-  }
-
-  const handleLoginSubmit = (e) => {
-    e.preventDefault()
-    setShowLoginModal(false)
-  }
-
-  // Pausar o activar servicio
-  const toggleServiceStatus = (id) => {
-    setServices(services.map(s => {
-      if (s.id === id) {
-        return { ...s, status: s.status === 'activo' ? 'pausado' : 'activo' }
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setErrorMsg(null);
+    try {
+      let urlAvatarReal = userProfile.avatar;
+      if (avatarFile) {
+        console.log("Subiendo avatar a Cloudinary...");
+        const uploadRes = await uploadUserAvatar(avatarFile, token);
+        urlAvatarReal = uploadRes.avatar_url || uploadRes.url || urlAvatarReal;
       }
-      return s
-    }))
-  }
 
-  // Eliminar servicio
-  const deleteService = (id) => {
-    setServices(services.filter(s => s.id !== id))
-  }
+      const payload = {
+        telefono: editForm.telefono, 
+        genero: editForm.genero,
+        instagram_url: editForm.instagram_url, 
+        facebook_url: editForm.facebook_url,
+        titulo_oficio: editForm.titulo_oficio,
+        experiencia: editForm.experiencia, 
+        biografia: editForm.biografia,
+        avatar_url: urlAvatarReal 
+      };
+      
+      await updateUserProfile(payload, token);
 
-  const handleLogout = () => {
-    navigate('/')
-  }
+      setUserProfile((prev) => ({ ...prev, ...editForm, avatar: urlAvatarReal }));
+      setEditForm((prev) => ({ ...prev, avatar: urlAvatarReal }));
+      setShowEditProfileModal(false);
+      setAvatarFile(null);
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      setErrorMsg(error.message || 'Error al actualizar el perfil.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ==========================================
+  // LÓGICA DE FOTOS PARA SERVICIOS
+  // ==========================================
+  const handlePhotoChange = (formType, num, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file); // Solo para previsualización
+      if (formType === 'create') {
+        setNewServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: url }));
+        setNewServiceFiles(prev => ({ ...prev, [num]: file })); // Guardamos el archivo real
+      } else {
+        setEditServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: url }));
+        setEditServiceFiles(prev => ({ ...prev, [num]: file })); // Guardamos el archivo real
+      }
+    }
+  };
+
+  const removePhoto = (formType, num) => {
+    if (formType === 'create') {
+      setNewServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: '' }));
+      setNewServiceFiles(prev => ({ ...prev, [num]: null }));
+    } else {
+      setEditServiceForm(prev => ({ ...prev, [`foto_url_${num}`]: '' }));
+      setEditServiceFiles(prev => ({ ...prev, [num]: null }));
+    }
+  };
+
+  // ==========================================
+  // LÓGICA DE CALENDARIO (CREACIÓN)
+  // ==========================================
+  const handleGenerateBlocks = () => {
+    if (!scheduleRange.start) { alert("Selecciona al menos la fecha de inicio."); return; }
+    const startDate = new Date(scheduleRange.start + "T00:00:00");
+    const endDate = scheduleRange.end ? new Date(scheduleRange.end + "T00:00:00") : new Date(startDate);
+    if (startDate > endDate) { alert("La fecha de fin no puede ser menor a la de inicio."); return; }
+    let current = new Date(startDate);
+    const newBlocks = [];
+    while (current <= endDate) {
+      const dateStr = current.toISOString().split('T')[0];
+      for (let i = 8; i < 17; i++) {
+        newBlocks.push({
+          id_temporal: `${dateStr}-${i}`, fecha: dateStr, fecha_visual: current.toLocaleDateString('es-CL'),
+          hora_inicio: `${String(i).padStart(2, '0')}:00`, hora_fin: `${String(i+1).padStart(2, '0')}:00`
+        });
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    setGeneratedBlocks(newBlocks);
+  };
+  const removeBlock = (id_temporal) => setGeneratedBlocks(prev => prev.filter(b => b.id_temporal !== id_temporal));
+  const blocksByDate = generatedBlocks.reduce((acc, block) => {
+    if (!acc[block.fecha_visual]) acc[block.fecha_visual] = [];
+    acc[block.fecha_visual].push(block);
+    return acc;
+  }, {});
+
+  // ==========================================
+  // LÓGICA DE CALENDARIO (EDICIÓN)
+  // ==========================================
+  const handleEditGenerateBlocks = () => {
+    if (!editScheduleRange.start) { alert("Selecciona al menos la fecha de inicio."); return; }
+    const startDate = new Date(editScheduleRange.start + "T00:00:00");
+    const endDate = editScheduleRange.end ? new Date(editScheduleRange.end + "T00:00:00") : new Date(startDate);
+    if (startDate > endDate) { alert("La fecha de fin no puede ser menor a la de inicio."); return; }
+    let current = new Date(startDate);
+    const newBlocks = [];
+    while (current <= endDate) {
+      const dateStr = current.toISOString().split('T')[0];
+      for (let i = 8; i < 17; i++) {
+        newBlocks.push({
+          id_temporal: `${dateStr}-${i}`, fecha: dateStr, fecha_visual: current.toLocaleDateString('es-CL'),
+          hora_inicio: `${String(i).padStart(2, '0')}:00`, hora_fin: `${String(i+1).padStart(2, '0')}:00`
+        });
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    setEditGeneratedBlocks(newBlocks);
+  };
+  const removeEditBlock = (id_temporal) => setEditGeneratedBlocks(prev => prev.filter(b => b.id_temporal !== id_temporal));
+  const editBlocksByDate = editGeneratedBlocks.reduce((acc, block) => {
+    if (!acc[block.fecha_visual]) acc[block.fecha_visual] = [];
+    acc[block.fecha_visual].push(block);
+    return acc;
+  }, {});
+
+  // ==========================================
+  // GESTIÓN DE SERVICIOS (CREAR)
+  // ==========================================
+  const handleCreateService = async (e) => {
+    e.preventDefault();
+    setIsCreatingService(true);
+    setErrorMsg(null);
+    try {
+      // 1. Crear registro (sin enviar los textos de foto porque no son urls válidas aún)
+      const pubRes = await crearPublicacionServicio({
+        titulo: newServiceForm.titulo, descripcion: newServiceForm.descripcion,
+        precio_base: Number(newServiceForm.precio_base), oficio_id: Number(newServiceForm.oficio_id),
+        anos_experiencia: Number(newServiceForm.anos_experiencia), es_horario_conversable: isConversable
+      }, token);
+
+      const nuevaPubId = pubRes.publicacion.id;
+
+      // 2. Subir fotos si es que se seleccionaron
+      if (newServiceFiles[1] || newServiceFiles[2] || newServiceFiles[3]) {
+        await subirFotosServicio(nuevaPubId, newServiceFiles, token);
+      }
+
+      // 3. Guardar Calendario
+      if (!isConversable && generatedBlocks.length > 0) {
+        const bloquesFormateados = generatedBlocks.map(b => ({
+          fecha_hora_inicio: `${b.fecha}T${b.hora_inicio}:00`, fecha_hora_fin: `${b.fecha}T${b.hora_fin}:00`
+        }));
+        await guardarHorariosMasivos(nuevaPubId, bloquesFormateados, token);
+      }
+
+      // Refrescamos datos para obtener las fotos reales de la BD
+      await fetchAllData();
+      
+      setShowNewServiceModal(false);
+      setNewServiceForm({ titulo: '', precio_base: '', oficio_id: '', anos_experiencia: 0, descripcion: '', foto_url_1: '', foto_url_2: '', foto_url_3: '' });
+      setNewServiceFiles({ 1: null, 2: null, 3: null });
+      setGeneratedBlocks([]); setScheduleRange({ start: '', end: '' }); setIsConversable(false);
+    } catch (error) {
+      setErrorMsg(error.message || 'Error al crear el servicio.');
+    } finally {
+      setIsCreatingService(false);
+    }
+  };
+
+  // ==========================================
+  // GESTIÓN DE SERVICIOS (EDITAR)
+  // ==========================================
+  const openEditModal = async (pub) => {
+    setEditServiceForm({
+      id: pub.id,
+      titulo: pub.titulo,
+      precio_base: pub.precio_base,
+      oficio_id: pub.oficio_id || '',
+      anos_experiencia: pub.anos_experiencia || 0,
+      descripcion: pub.descripcion,
+      foto_url_1: pub.foto_url_1 || '',
+      foto_url_2: pub.foto_url_2 || '',
+      foto_url_3: pub.foto_url_3 || '',
+      es_horario_conversable: pub.es_horario_conversable || false
+    });
+    setEditServiceFiles({ 1: null, 2: null, 3: null });
+    setEditIsConversable(pub.es_horario_conversable || false);
+    setEditGeneratedBlocks([]);
+    setEditScheduleRange({ start: '', end: '' });
+
+   try {
+      // Intentamos obtener los bloques del backend
+      const resBloques = await obtenerBloquesHorarios(pub.id, token);
+      
+      // Asegurarnos de extraer el array, no importa cómo venga (Array directo, o dentro de 'bloques' o 'data')
+      let bloquesExtraidos = [];
+      if (Array.isArray(resBloques)) {
+        bloquesExtraidos = resBloques;
+      } else if (resBloques && Array.isArray(resBloques.bloques)) {
+        bloquesExtraidos = resBloques.bloques;
+      } else if (resBloques && Array.isArray(resBloques.data)) {
+        bloquesExtraidos = resBloques.data;
+      }
+
+      setExistingBlocks(bloquesExtraidos);
+    } catch (err) {
+      console.error("Error al cargar bloques:", err);
+      // Si falla, mostramos una alerta para saber exactamente QUÉ URL falló
+      alert("Hubo un problema al cargar los horarios guardados. Revisa la consola.");
+      setExistingBlocks([]);
+    }
+
+    setShowEditServiceModal(true);
+  };
+
+  const handleDeleteExistingBlock = async (bloqueId) => {
+    try {
+      await eliminarBloqueHorario(bloqueId, token);
+      setExistingBlocks(existingBlocks.filter(b => b.id !== bloqueId));
+    } catch (error) {
+      alert(error.message || 'Error al eliminar el bloque.');
+    }
+  };
+
+  const handleUpdateService = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setErrorMsg(null);
+    try {
+      // 1. Actualizar textos
+      await actualizarPublicacionServicio(editServiceForm.id, {
+        titulo: editServiceForm.titulo,
+        descripcion: editServiceForm.descripcion,
+        precio_base: Number(editServiceForm.precio_base),
+        oficio_id: Number(editServiceForm.oficio_id),
+        anos_experiencia: Number(editServiceForm.anos_experiencia),
+        es_horario_conversable: editIsConversable
+      }, token);
+
+      // 2. Actualizar fotos SI hay nuevos archivos
+      if (editServiceFiles[1] || editServiceFiles[2] || editServiceFiles[3]) {
+        await subirFotosServicio(editServiceForm.id, editServiceFiles, token);
+      }
+
+      // 3. Agregar nuevos bloques horarios
+      if (!editIsConversable && editGeneratedBlocks.length > 0) {
+        const bloquesFormateados = editGeneratedBlocks.map(b => ({
+          fecha_hora_inicio: `${b.fecha}T${b.hora_inicio}:00`, fecha_hora_fin: `${b.fecha}T${b.hora_fin}:00`
+        }));
+        await guardarHorariosMasivos(editServiceForm.id, bloquesFormateados, token);
+      }
+
+      // Refrescamos datos para obtener las fotos reales de la BD
+      await fetchAllData();
+      setShowEditServiceModal(false);
+    } catch (error) {
+      setErrorMsg(error.message || 'Error al actualizar el servicio.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ==========================================
+  // GESTIÓN DE SERVICIOS (PAUSAR Y ELIMINAR)
+  // ==========================================
+  const toggleServiceStatus = async (pub) => {
+    const nuevoEstado = pub.estado === 'ACTIVA' ? 'PAUSADA' : 'ACTIVA';
+    try {
+      await actualizarPublicacionServicio(pub.id, { estado: nuevoEstado }, token);
+      setServices(services.map(s => s.id === pub.id ? { ...s, estado: nuevoEstado } : s));
+    } catch (error) {
+      alert(error.message || 'Error al cambiar estado del servicio.');
+    }
+  };
+
+  const handleDeleteService = async (id) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este servicio? Se mantendrá tu historial por seguridad.')) return;
+    try {
+      await eliminarPublicacionServicio(id, token);
+      setServices(services.filter(s => s.id !== id));
+    } catch (error) {
+      alert(error.message || 'Error al eliminar la publicación.');
+    }
+  };
+
+  // ==========================================
+  // RENDERIZADO PRINCIPAL Y VISTAS
+  // ==========================================
+  const fullName = `${userProfile.nombres || ''} ${userProfile.primer_apellido || ''} ${userProfile.segundo_apellido || ''}`.trim();
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">Cargando tu perfil desde el servidor...</div>;
+  const bioLength = editForm.biografia?.length || 0;
+  const charsLeft = MAX_BIO_LENGTH - bioLength;
+  const isCloseToLimit = charsLeft <= 20;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-      
-      {/* NAVBAR SUPERIOR */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" onClick={closeMenu} className="flex items-center cursor-pointer">
-            <ConectaPoLogo height={38} />
-          </Link>
+      {/* Banner Superior */}
+      <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }} />
 
-          <div className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Home</Link>
-            <Link to="/galeria#galeria" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Servicios</Link>
-            
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-sm overflow-hidden">
-                <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-slate-900">{userProfile.name}</p>
-                <p className="text-[10px] text-slate-500">Sesión activa</p>
-              </div>
-
-              <button onClick={handleLogout} title="Cerrar sesión" className="ml-2 p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
-          </button>
-        </div>
-
-        {menuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-100 px-4 py-3 flex flex-col gap-2">
-            <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-xl mb-1">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs overflow-hidden">
-                <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-900">{userProfile.name}</p>
-                <p className="text-[10px] text-slate-500">Sesión activa</p>
-              </div>
-            </div>
-            <Link to="/" onClick={closeMenu} className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Home</Link>
-            <Link to="/galeria#galeria" onClick={closeMenu} className="text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Servicios</Link>
-            <button onClick={() => { closeMenu(); handleLogout(); }} className="text-left px-3 py-2 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer">
-              Cerrar sesión
-            </button>
-          </div>
-        )}
-      </nav>
-
-      {/* BANNER SUPERIOR */}
-      <div className="h-48 md:h-60 relative overflow-hidden w-full" style={{ background: 'linear-gradient(135deg, #2563EB, #F97316)' }}>
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-      </div>
-
-      {/* CONTENEDOR PRINCIPAL */}
       <div className="max-w-5xl mx-auto px-6">
-        
-        {/* Cabecera del perfil */}
+       {/* Cabecera del Perfil con Avatar y Datos */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 mb-8 relative z-10">
           <div className="flex items-end gap-5">
-            <div className="relative">
-              <img src={userProfile.avatar} alt={userProfile.name} className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-xl bg-white" />
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center border-2 border-white shadow-md bg-orange-500 text-white">
-                ⚡
-              </div>
+            <div className="w-28 h-28 rounded-2xl border-4 border-white shadow-xl bg-white overflow-hidden flex items-center justify-center">
+              <img 
+                src={userProfile.avatar} 
+                alt={fullName} 
+                className="w-full h-full object-cover" 
+                onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=Usuario'; }}
+              />
             </div>
             <div className="pb-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>{userProfile.name}</h1>
-              </div>
-              <p className="text-slate-500 text-sm">{userProfile.title} · {userProfile.location}</p>
+              <h1 className="text-2xl font-bold text-slate-900">{fullName}</h1>
+              <p className="text-slate-500 text-sm font-medium text-orange-600">{userProfile.titulo_oficio} · <span className="text-slate-500">{userProfile.location}</span></p>
             </div>
           </div>
-
-          <button 
-            onClick={() => {
-              setEditForm(userProfile)
-              setShowEditProfileModal(true)
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:shadow-md transition-all self-start sm:self-auto cursor-pointer"
-          >
-            <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
+          <button onClick={() => { setEditForm(userProfile); setShowEditProfileModal(true); setAvatarFile(null); }} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white hover:bg-slate-50 cursor-pointer shadow-sm">
             Editar perfil
           </button>
         </div>
-
-        {/* CONTENEDOR DE DOS COLUMNAS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Columna Izquierda */}
+          {/* Columna Izquierda: Contacto */}
           <div className="lg:col-span-1 space-y-6">
-            
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-3">
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">Herramientas de usuario</h3>
-              
-              <button onClick={() => navigate('/panel/calendario')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all text-sm font-semibold text-left cursor-pointer">
-                <span className="text-xl">📅</span>
-                <div>
-                  <div>Mi Calendario</div>
-                  <div className="text-xs text-blue-500 font-normal">Gestionar disponibilidad</div>
-                </div>
-              </button>
-
-              <button onClick={() => navigate('/panel/tickets')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-orange-50 text-orange-700 hover:bg-orange-100 transition-all text-sm font-semibold text-left cursor-pointer">
-                <span className="text-xl">🎫</span>
-                <div>
-                  <div>Soporte / Tickets</div>
-                  <div className="text-xs text-orange-500 font-normal">Crear nuevo ticket</div>
-                </div>
-              </button>
-
-              <div className="pt-2 border-t border-slate-100 mt-2">
-                <div className="flex items-center justify-between p-2">
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Modo Vacaciones</p>
-                    <p className="text-[11px] text-slate-500">Ocultar servicios temporalmente</p>
-                  </div>
-                  <button onClick={() => setIsVacation(!isVacation)} className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${isVacation ? 'bg-orange-500' : 'bg-slate-300'}`}>
-                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isVacation ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-                {isVacation && (
-                  <p className="text-[11px] text-orange-600 bg-orange-50 p-2 rounded-lg font-medium mt-1">
-                    ⚠️ Tus servicios están pausados por vacaciones.
-                  </p>
-                )}
-              </div>
-            </div>
-
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-4">Información de contacto</h3>
-              <div className="space-y-3">
-                {[
-                  ['📧', userProfile.email], 
-                  ['📞', userProfile.phone], 
-                  ['📍', userProfile.location], 
-                  ['🏗️', userProfile.experience]
-                ].map(([icon, val]) => (
-                  <div key={val} className="flex items-center gap-3 text-sm text-slate-600">
-                    <span className="text-base">{icon}</span>
-                    <span className="truncate">{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">Habilidades</h3>
-              <div className="flex flex-wrap gap-2">
-                {userProfile.skills.split(',').map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700">
-                    {skill.trim()}
-                  </span>
-                ))}
+              <div className="space-y-3 text-sm text-slate-600">
+                <div className="flex items-center gap-3"><span>📧</span> <span className="truncate">{userProfile.email}</span></div>
+                <div className="flex items-center gap-3"><span>📞</span> {userProfile.telefono || 'Sin teléfono'}</div>
+                <div className="flex items-center gap-3"><span>🏗️</span> Experiencia: {userProfile.experiencia}</div>
+                <div className="flex items-center gap-3"><span>👤</span> Género: {userProfile.genero === 'M' ? 'Masculino' : userProfile.genero === 'F' ? 'Femenino' : userProfile.genero === 'O' ? 'Otro' : 'No especificado'}</div>
+                {userProfile.instagram_url && <div className="flex items-center gap-3"><span>📸</span> <a href={userProfile.instagram_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Instagram</a></div>}
+                {userProfile.facebook_url && <div className="flex items-center gap-3"><span>📘</span> <a href={userProfile.facebook_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Facebook</a></div>}
               </div>
             </div>
           </div>
 
-          {/* Columna Derecha */}
+          {/* Columna Derecha: Biografía y Servicios */}
           <div className="lg:col-span-2 space-y-6">
-            
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                {userProfile.bio}
-              </p>
+              <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción profesional</h3>
+              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.biografia || 'Sin descripción aún.'}</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
-                  <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
-                </div>
-                <button 
-                  onClick={() => setShowNewServiceModal(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
-                  style={{ background: '#F97316' }}
-                >
-                  <span>+</span> Crear servicio
-                </button>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4 pt-2">
-                {services.map(pub => (
-                  <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
-                    <div className="h-36 w-full overflow-hidden relative bg-slate-100">
-                      <img src={pub.image} alt={pub.title} className="w-full h-full object-cover" />
-                      <span className="absolute top-2 left-2 text-[10px] font-bold text-white bg-slate-900/70 backdrop-blur-sm px-2 py-0.5 rounded-md">{pub.cat}</span>
-                      <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md ${pub.status === 'activo' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-                        {pub.status}
-                      </span>
-                    </div>
-                    <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.title}</h4>
-                          <span className="text-xs font-extrabold text-orange-600">{pub.price}</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-2">{pub.desc}</p>
-                      </div>
-                    </div>
+            {/* Listado de Publicaciones */}
+            {(userProfile.rol === 'PROFESIONAL' || userProfile.rol === 'CLIENTE') && (
+              <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
+                    <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <button 
+                    onClick={() => setShowNewServiceModal(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
+                    style={{ background: '#F97316' }}
+                  >
+                    <span>+</span> Crear servicio
+                  </button>
+                </div>
 
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-              <div>
-                <h3 className="font-semibold text-slate-900 text-sm">Administrar publicaciones</h3>
-                <p className="text-xs text-slate-500">Pausa temporalmente o elimina tus servicios publicados.</p>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                {services.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-3 text-center">No tienes publicaciones activas.</p>
-                ) : (
-                  services.map(s => (
-                    <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50">
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">{s.title}</p>
-                        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${s.status === 'activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {s.status}
-                        </span>
+                <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                  {services.length === 0 ? (
+                    <p className="text-xs text-slate-400 col-span-2 py-4 text-center">Aún no tienes servicios publicados.</p>
+                  ) : (
+                    services.map(pub => (
+                      <div key={pub.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+                        <div className="h-32 w-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
+                          <img 
+                            src={pub.foto_url_1 || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'} 
+                            alt={pub.titulo} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'; }}
+                          />
+                          <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${pub.estado === 'PAUSADA' ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+                            {pub.estado || 'ACTIVA'}
+                          </span>
+                        </div>
+                        <div className="p-4 flex flex-col flex-1 justify-between space-y-2">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{pub.titulo}</h4>
+                              <span className="text-xs font-extrabold text-orange-600">${pub.precio_base?.toLocaleString('es-CL')}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 line-clamp-2">{pub.descripcion}</p>
+                          </div>
+                          
+                          {/* Botones de acción por tarjeta */}
+                          <div className="grid grid-cols-3 gap-1 pt-3 border-t border-slate-50 mt-auto">
+                            <button onClick={() => openEditModal(pub)} className="py-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors cursor-pointer">✏️ Editar</button>
+                            <button onClick={() => toggleServiceStatus(pub)} className={`py-1.5 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${pub.estado === 'PAUSADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
+                              {pub.estado === 'PAUSADA' ? '▶️ Activar' : '⏸️ Pausar'}
+                            </button>
+                            <button onClick={() => handleDeleteService(pub.id)} className="py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors cursor-pointer">🗑️ Eliminar</button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => toggleServiceStatus(s.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition-all cursor-pointer">
-                          {s.status === 'activo' ? 'Pausar' : 'Activar'}
-                        </button>
-                        <button onClick={() => deleteService(s.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-all cursor-pointer">
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-
+            )}
           </div>
         </div>
       </div>
 
-      {/* ================= MODALES ================= */}
-
-      {/* 1. MODAL PARA EDITAR PERFIL */}
+      {/* ========================================== */}
+      {/* MODAL 1: EDITAR PERFIL                      */}
+      {/* ========================================== */}
       {showEditProfileModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="font-bold text-slate-900 text-base" style={{ fontFamily: 'Plus Jakarta Sans' }}>Editar Información del Perfil</h3>
-              <button onClick={() => setShowEditProfileModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all font-bold text-xs cursor-pointer">✕</button>
-            </div>
-
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h3 className="font-bold text-slate-900 mb-4 border-b pb-2">Editar Información del Perfil</h3>
+            {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">{errorMsg}</div>}
+            
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2">Foto de perfil</label>
                 <div className="flex items-center gap-4">
-                  <img src={editForm.avatar} alt="Avatar preview" className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
-                  />
+                  <img src={editForm.avatar} alt="Avatar preview" className="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-50" />
+                  <input type="file" accept="image/*" onChange={handleAvatarChange} className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre completo</label>
-                  <input 
-                    type="text" 
-                    value={editForm.name}
-                    onChange={e => setEditForm({...editForm, name: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre completo (Verificado)</label>
+                  <input type="text" value={fullName} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium text-xs" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Título u oficio</label>
-                  <input 
-                    type="text" 
-                    value={editForm.title}
-                    onChange={e => setEditForm({...editForm, title: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico (Verificado)</label>
+                  <input type="email" value={editForm.email} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium text-xs" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico</label>
-                  <input 
-                    type="email" 
-                    value={editForm.email}
-                    onChange={e => setEditForm({...editForm, email: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono</label>
-                  <input 
-                    type="text" 
-                    value={editForm.phone}
-                    onChange={e => setEditForm({...editForm, phone: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Ubicación / Comuna</label>
-                  <input 
-                    type="text" 
-                    value={editForm.location}
-                    onChange={e => setEditForm({...editForm, location: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Título u Oficio</label>
+                  <input type="text" value={editForm.titulo_oficio} onChange={e => setEditForm({ ...editForm, titulo_oficio: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Años de experiencia</label>
-                  <input 
-                    type="text" 
-                    value={editForm.experience}
-                    onChange={e => setEditForm({...editForm, experience: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
+                  <input type="text" value={editForm.experiencia} onChange={e => setEditForm({ ...editForm, experiencia: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Habilidades (separadas por comas)</label>
-                <input 
-                  type="text" 
-                  value={editForm.skills}
-                  onChange={e => setEditForm({...editForm, skills: e.target.value})}
-                  placeholder="Ej: Gasfitería, Plomería, Calefont"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Biografía / Descripción</label>
-                <textarea 
-                  rows={4} 
-                  value={editForm.bio}
-                  onChange={e => setEditForm({...editForm, bio: e.target.value})}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 resize-none"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md cursor-pointer" style={{ background: '#F97316' }}>
-                  Guardar cambios
-                </button>
-                <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-5 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 2. MODAL PARA CREAR NUEVO SERVICIO */}
-      {showNewServiceModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="font-bold text-slate-900 text-base" style={{ fontFamily: 'Plus Jakarta Sans' }}>Nuevo Servicio / Publicación</h3>
-              <button onClick={() => setShowNewServiceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all font-bold text-xs cursor-pointer">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateService} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Título del servicio</label>
-                <input 
-                  type="text" 
-                  placeholder="Ej. Reparación de calefont"
-                  value={newService.title}
-                  onChange={e => setNewService({...newService, title: e.target.value})}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Precio aproximado</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ej. $30.000"
-                    value={newService.price}
-                    onChange={e => setNewService({...newService, price: e.target.value})}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                  />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono</label>
+                  <input type="text" value={editForm.telefono} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Categoría</label>
-                  <select 
-                    value={newService.cat}
-                    onChange={e => setNewService({...newService, cat: e.target.value})}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white"
-                  >
-                    <option value="Gasfitería">Gasfitería</option>
-                    <option value="Urgencias">Urgencias</option>
-                    <option value="Instalaciones">Instalaciones</option>
-                    <option value="Mantención">Mantención</option>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Género</label>
+                  <select value={editForm.genero} onChange={e => setEditForm({ ...editForm, genero: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500 bg-white">
+                    <option value="">Prefiero no decirlo</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                    <option value="O">Otro</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Subir foto del servicio</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
-                />
-              </div>
-
-              {newService.image && (
-                <div className="relative h-28 w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                  <img src={newService.image} alt="Vista previa" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-1 right-1 bg-slate-900/70 text-white text-[10px] px-2 py-0.5 rounded">Vista previa</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Instagram (URL)</label>
+                  <input type="url" value={editForm.instagram_url} onChange={e => setEditForm({ ...editForm, instagram_url: e.target.value })} placeholder="https://instagram.com/..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
                 </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción breve</label>
-                <textarea 
-                  rows={3} 
-                  placeholder="Detalla qué incluye tu servicio..."
-                  value={newService.desc}
-                  onChange={e => setNewService({...newService, desc: e.target.value})}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 resize-none"
-                />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Facebook (URL)</label>
+                  <input type="url" value={editForm.facebook_url} onChange={e => setEditForm({ ...editForm, facebook_url: e.target.value })} placeholder="https://facebook.com/..." className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-orange-500" />
+                </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md cursor-pointer" style={{ background: '#F97316' }}>
-                  Publicar servicio
-                </button>
-                <button type="button" onClick={() => setShowNewServiceModal(false)} className="px-5 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
-                  Cancelar
-                </button>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Biografía / Descripción</label>
+                <textarea rows={4} maxLength={MAX_BIO_LENGTH} value={editForm.biografia} onChange={e => setEditForm({ ...editForm, biografia: e.target.value })} className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none resize-none ${isCloseToLimit ? 'border-red-300' : 'border-slate-200 focus:border-orange-500'}`} />
+                <div className={`text-right text-[10px] mt-1 font-semibold ${isCloseToLimit ? 'text-red-500' : 'text-slate-400'}`}>{bioLength} / {MAX_BIO_LENGTH}</div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold text-xs transition-all hover:opacity-95 shadow-md disabled:opacity-70" style={{ background: '#F97316' }}>{isSaving ? 'Guardando...' : 'Guardar cambios'}</button>
+                <button type="button" onClick={() => setShowEditProfileModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* 3. MODAL PARA INICIAR SESIÓN */}
-      {showLoginModal && (
+      {/* ========================================== */}
+      {/* MODAL 2: CREAR SERVICIO Y CALENDARIO        */}
+      {/* ========================================== */}
+      {showNewServiceModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base" style={{ fontFamily: 'Plus Jakarta Sans' }}>Iniciar Sesión</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Ingresa a tu cuenta para continuar</p>
-              </div>
-              <button onClick={() => setShowLoginModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all font-bold text-xs cursor-pointer">✕</button>
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-bold text-slate-900 text-base">Crear Nuevo Servicio</h3>
+              <button onClick={() => setShowNewServiceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-xs cursor-pointer">✕</button>
             </div>
+            {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-xl">{errorMsg}</div>}
+            
+            <form onSubmit={handleCreateService} className="space-y-5">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Título del servicio *</label>
+                  <input type="text" required value={newServiceForm.titulo} onChange={e => setNewServiceForm({...newServiceForm, titulo: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Precio Base (CLP) *</label>
+                    <input type="number" required value={newServiceForm.precio_base} onChange={e => setNewServiceForm({...newServiceForm, precio_base: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Categoría / Oficio *</label>
+                    <select required value={newServiceForm.oficio_id} onChange={e => setNewServiceForm({...newServiceForm, oficio_id: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 bg-white">
+                      <option value="">Selecciona un oficio</option>
+                      {oficios.map(oficio => (
+                        <option key={oficio.id} value={oficio.id}>{oficio.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción detallada *</label>
+                  <textarea rows={3} required value={newServiceForm.descripcion} onChange={e => setNewServiceForm({...newServiceForm, descripcion: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 resize-none" />
+                </div>
 
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico</label>
-                <input 
-                  type="email" 
-                  placeholder="ejemplo@correo.com"
-                  value={loginData.email}
-                  onChange={e => setLoginData({...loginData, email: e.target.value})}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
+                {/* Subida de 3 Fotos */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">Fotos del servicio (Máximo 3)</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map(num => (
+                      <div key={num} className="relative h-24 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center group">
+                        {newServiceForm[`foto_url_${num}`] ? (
+                          <>
+                            <img src={newServiceForm[`foto_url_${num}`]} alt={`Foto ${num}`} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => removePhoto('create', num)} className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-600 cursor-pointer">✕</button>
+                          </>
+                        ) : (
+                          <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                            <span className="text-2xl font-light mb-1">+</span>
+                            <span className="text-[10px] font-semibold">Añadir foto</span>
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoChange('create', num, e)} />
+                          </label>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Contraseña</label>
-                <input 
-                  type="password" 
-                  placeholder="••••••••"
-                  value={loginData.password}
-                  onChange={e => setLoginData({...loginData, password: e.target.value})}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
+              {/* Sistema de Agendamiento */}
+              <div className="pt-5 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-slate-900 text-sm">📅 Sistema de Agendamiento</h4>
+                  <label className="flex items-center cursor-pointer">
+                    <div className="relative">
+                      <input type="checkbox" className="sr-only" checked={isConversable} onChange={() => setIsConversable(!isConversable)} />
+                      <div className={`block w-10 h-6 rounded-full transition-colors ${isConversable ? 'bg-orange-500' : 'bg-slate-300'}`}></div>
+                      <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isConversable ? 'transform translate-x-4' : ''}`}></div>
+                    </div>
+                    <div className="ml-3 text-xs font-semibold text-slate-700">Trabajo a convenir</div>
+                  </label>
+                </div>
+
+                {isConversable ? (
+                  <div className="bg-slate-50 border-2 border-dashed border-slate-300 p-5 rounded-2xl text-center">
+                    <h5 className="text-sm font-bold text-slate-700 mb-1">🤝 Modalidad: Horario a Convenir</h5>
+                    <p className="text-xs text-slate-500 mb-0">Tus clientes verán un botón de WhatsApp para conversar presupuesto y tiempos contigo.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4">
+                      <h6 className="mb-3 text-xs font-bold text-slate-800">🗓️ Generación Masiva (8:00 a 17:00 hrs)</h6>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">Desde</label>
+                          <input type="date" value={scheduleRange.start} onChange={e => setScheduleRange({...scheduleRange, start: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">Hasta</label>
+                          <input type="date" value={scheduleRange.end} onChange={e => setScheduleRange({...scheduleRange, end: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                        <button type="button" onClick={handleGenerateBlocks} className="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm">⚡ Generar</button>
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-100 rounded-2xl p-4 bg-white max-h-64 overflow-y-auto">
+                      <h6 className="text-xs font-bold text-slate-800 border-b border-slate-100 pb-2 mb-3">Tus bloques generados:</h6>
+                      {Object.keys(blocksByDate).length === 0 ? (
+                        <div className="text-center text-slate-400 text-xs py-4">Aún no has generado horarios.</div>
+                      ) : (
+                        <div className="space-y-4">
+                          {Object.keys(blocksByDate).map(dateStr => (
+                            <div key={dateStr}>
+                              <div className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold mb-2 shadow-sm">📅 Fecha: {dateStr}</div>
+                              <div className="space-y-1.5 pl-2">
+                                {blocksByDate[dateStr].map(block => (
+                                  <div key={block.id_temporal} className="flex justify-between items-center p-2.5 border border-emerald-200 bg-emerald-50/30 rounded-xl">
+                                    <div>
+                                      <h6 className="text-xs font-bold text-slate-800 m-0">{block.hora_inicio} - {block.hora_fin}</h6>
+                                      <span className="text-[9px] font-extrabold text-emerald-600 tracking-wider">DISPONIBLE</span>
+                                    </div>
+                                    <button type="button" onClick={() => removeBlock(block.id_temporal)} className="text-[10px] text-slate-500 border border-slate-200 bg-white font-semibold px-2 py-1 rounded-lg">Eliminar</button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md cursor-pointer" style={{ background: '#F97316' }}>
-                  Entrar
+              <div className="flex gap-3 pt-4 border-t border-slate-100">
+                <button type="submit" disabled={isCreatingService} className="flex-1 py-3.5 rounded-xl text-white font-semibold text-sm shadow-md" style={{ background: '#F97316' }}>
+                  {isCreatingService ? 'Guardando...' : 'Publicar servicio'}
                 </button>
-                <button type="button" onClick={() => setShowLoginModal(false)} className="px-5 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
-                  Cancelar
+                <button type="button" onClick={() => setShowNewServiceModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* MODAL 3: EDITAR SERVICIO Y CALENDARIO       */}
+      {/* ========================================== */}
+      {showEditServiceModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
+            <div className="flex items-center justify-between border-b pb-3 mb-2">
+              <h3 className="font-bold text-slate-900 text-base">Editar Servicio y Calendario</h3>
+              <button onClick={() => setShowEditServiceModal(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-xs cursor-pointer">✕</button>
+            </div>
+            
+            <form onSubmit={handleUpdateService} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Título del servicio *</label>
+                <input type="text" required value={editServiceForm.titulo} onChange={e => setEditServiceForm({...editServiceForm, titulo: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Precio Base (CLP) *</label>
+                  <input type="number" required value={editServiceForm.precio_base} onChange={e => setEditServiceForm({...editServiceForm, precio_base: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Categoría / Oficio *</label>
+                  <select required value={editServiceForm.oficio_id} onChange={e => setEditServiceForm({...editServiceForm, oficio_id: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 bg-white">
+                    <option value="">Selecciona un oficio</option>
+                    {oficios.map(oficio => (
+                      <option key={oficio.id} value={oficio.id}>{oficio.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción detallada *</label>
+                <textarea rows={3} required value={editServiceForm.descripcion} onChange={e => setEditServiceForm({...editServiceForm, descripcion: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-orange-500 resize-none" />
+              </div>
+
+              {/* Subida de 3 Fotos en Edición */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-2">Fotos del servicio (Máximo 3)</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[1, 2, 3].map(num => (
+                    <div key={num} className="relative h-24 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center group">
+                      {editServiceForm[`foto_url_${num}`] ? (
+                        <>
+                          <img src={editServiceForm[`foto_url_${num}`]} alt={`Foto ${num}`} className="w-full h-full object-cover" />
+                          <button type="button" onClick={() => removePhoto('edit', num)} className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-600 cursor-pointer">✕</button>
+                        </>
+                      ) : (
+                        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                          <span className="text-2xl font-light mb-1">+</span>
+                          <span className="text-[10px] font-semibold">Añadir foto {num}</span>
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoChange('edit', num, e)} />
+                        </label>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Calendario y Bloques en Edición */}
+              <div className="pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-slate-900 text-sm">📅 Modificar Calendario / Disponibilidad</h4>
+                  <label className="flex items-center cursor-pointer">
+                    <div className="relative">
+                      <input type="checkbox" className="sr-only" checked={editIsConversable} onChange={() => setEditIsConversable(!editIsConversable)} />
+                      <div className={`block w-10 h-6 rounded-full transition-colors ${editIsConversable ? 'bg-orange-500' : 'bg-slate-300'}`}></div>
+                      <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${editIsConversable ? 'transform translate-x-4' : ''}`}></div>
+                    </div>
+                    <div className="ml-3 text-xs font-semibold text-slate-700">Trabajo a convenir</div>
+                  </label>
+                </div>
+
+                {editIsConversable ? (
+                  <div className="bg-slate-50 border-2 border-dashed border-slate-300 p-4 rounded-2xl text-center">
+                    <h5 className="text-sm font-bold text-slate-700 mb-1">🤝 Modalidad: Horario a Convenir</h5>
+                    <p className="text-xs text-slate-500 mb-0">Al activar esto, los clientes se contactarán directamente para acordar la fecha.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {existingBlocks.length > 0 && (
+                      <div className="border border-emerald-200 rounded-2xl p-3 bg-emerald-50/20 max-h-40 overflow-y-auto">
+                        <h6 className="text-xs font-bold text-emerald-800 border-b border-emerald-100 pb-1 mb-2">Horarios ya publicados:</h6>
+                        <div className="space-y-1.5">
+                          {existingBlocks.map(b => (
+                            <div key={b.id} className="flex justify-between items-center p-2 bg-white border border-emerald-100 rounded-xl text-xs">
+                              <span className="font-semibold text-slate-700">
+                                {new Date(b.fecha_hora_inicio).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' })} - {new Date(b.fecha_hora_fin).toLocaleTimeString('es-CL', { timeStyle: 'short' })}
+                              </span>
+                              <button type="button" onClick={() => handleDeleteExistingBlock(b.id)} className="text-[10px] text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg font-bold cursor-pointer">Eliminar</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <h6 className="mb-2 text-xs font-bold text-slate-800">🗓️ Agregar Más Bloques de Horarios</h6>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">Desde</label>
+                          <input type="date" value={editScheduleRange.start} onChange={e => setEditScheduleRange({...editScheduleRange, start: e.target.value})} className="w-full px-2 py-1.5 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">Hasta</label>
+                          <input type="date" value={editScheduleRange.end} onChange={e => setEditScheduleRange({...editScheduleRange, end: e.target.value})} className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs" />
+                        </div>
+                        <button type="button" onClick={handleEditGenerateBlocks} className="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm cursor-pointer">⚡ Generar</button>
+                      </div>
+                    </div>
+
+                    {editGeneratedBlocks.length > 0 && (
+                      <div className="border border-slate-100 rounded-2xl p-3 bg-white max-h-40 overflow-y-auto">
+                        <h6 className="text-xs font-bold text-slate-800 border-b pb-1 mb-2">Nuevos bloques listos para guardar:</h6>
+                        <div className="space-y-3">
+                          {Object.keys(editBlocksByDate).map(dateStr => (
+                            <div key={dateStr}>
+                              <div className="bg-slate-800 text-white px-2 py-1 rounded text-[11px] font-bold mb-1">📅 {dateStr}</div>
+                              <div className="space-y-1 pl-2">
+                                {editBlocksByDate[dateStr].map(block => (
+                                  <div key={block.id_temporal} className="flex justify-between items-center p-2 border border-blue-200 bg-blue-50/30 rounded-lg">
+                                    <span className="text-xs font-bold text-slate-700">{block.hora_inicio} - {block.hora_fin}</span>
+                                    <button type="button" onClick={() => removeEditBlock(block.id_temporal)} className="text-[10px] text-red-600 font-semibold px-2 py-0.5 cursor-pointer">Quitar</button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-3 pt-4 border-t border-slate-100">
+                <button type="submit" disabled={isSaving} className="flex-1 py-3.5 rounded-xl text-white font-semibold text-sm shadow-md" style={{ background: '#F97316' }}>
+                  {isSaving ? 'Guardando...' : 'Actualizar servicio y calendario'}
                 </button>
+                <button type="button" onClick={() => setShowEditServiceModal(false)} className="px-6 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button>
               </div>
             </form>
           </div>
@@ -648,5 +897,5 @@ export default function MiPerfil() {
       )}
 
     </div>
-  )
+  );
 }

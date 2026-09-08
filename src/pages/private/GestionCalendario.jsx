@@ -1,36 +1,63 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useUser } from '../../context/useUser'
+import { guardarHorariosMasivos } from '../../services/api'
 
 const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 export default function GestionCalendario() {
   const navigate = useNavigate()
-  const [currentMonth, setCurrentMonth] = useState('Agosto 2026')
+  const { token } = useUser()
+  const [currentMonth] = useState('Agosto 2026')
   const [selectedDate, setSelectedDate] = useState(24)
   const [availabilityStatus, setAvailabilityStatus] = useState('disponible')
+  const [startTime, setStartTime] = useState('09:00')
+  const [endTime, setEndTime] = useState('18:00')
+  const [publicationId, setPublicationId] = useState('')
   const [saved, setSaved] = useState(false)
 
   const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1)
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+  const handleSave = async () => {
+    if (!publicationId) {
+      alert('Ingresa el ID de la publicación a la que corresponde este horario.')
+      return
+    }
+
+    if (availabilityStatus === 'no-disponible') {
+      alert('Para marcar un día como no disponible, simplemente no generes bloques en él.')
+      return
+    }
+
+    try {
+      const fechaStr = `2026-08-${String(selectedDate).padStart(2, '0')}`
+
+      const bloqueUnico = {
+        fecha_hora_inicio: `${fechaStr}T${startTime}:00`,
+        fecha_hora_fin: `${fechaStr}T${endTime}:00`
+      }
+
+      await guardarHorariosMasivos(publicationId, [bloqueUnico], token)
+
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (error) {
+      alert(error.message)
+    }
   }
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-100 py-10 px-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-        
-        {/* COLUMNA IZQUIERDA: Menú de navegación al lado */}
+
         <div className="lg:col-span-1 space-y-3">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">
             Navegación
           </div>
 
-          {/* Perfil */}
-          <button 
+          <button
             onClick={() => navigate('/panel/perfil')}
-            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all text-left"
+            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all text-left cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl shrink-0">👤</div>
             <div>
@@ -39,7 +66,6 @@ export default function GestionCalendario() {
             </div>
           </button>
 
-          {/* Calendario (Activo actual con borde azul destacado) */}
           <div className="w-full flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border-2 border-blue-200 shadow-sm text-left">
             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl shrink-0">📅</div>
             <div>
@@ -48,10 +74,9 @@ export default function GestionCalendario() {
             </div>
           </div>
 
-          {/* Tickets */}
-          <button 
+          <button
             onClick={() => navigate('/panel/tickets')}
-            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 hover:border-orange-200 hover:bg-orange-50/40 hover:shadow-sm transition-all text-left"
+            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 hover:border-orange-200 hover:bg-orange-50/40 hover:shadow-sm transition-all text-left cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-xl shrink-0">🎫</div>
             <div>
@@ -61,10 +86,8 @@ export default function GestionCalendario() {
           </button>
         </div>
 
-        {/* COLUMNA DERECHA: Contenido Principal de Calendario */}
         <div className="lg:col-span-3 space-y-6">
-          
-          {/* Encabezado */}
+
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <span className="font-mono text-xs font-extrabold tracking-widest uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
@@ -84,18 +107,16 @@ export default function GestionCalendario() {
             )}
           </div>
 
-          {/* Panel interno dividido */}
           <div className="grid md:grid-cols-3 gap-6">
-            
-            {/* Calendario visual */}
+
             <div className="md:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-8 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>
                   {currentMonth}
                 </h2>
                 <div className="flex gap-2">
-                  <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all font-bold">‹</button>
-                  <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all font-bold">›</button>
+                  <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all font-bold cursor-pointer">‹</button>
+                  <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all font-bold cursor-pointer">›</button>
                 </div>
               </div>
 
@@ -118,13 +139,12 @@ export default function GestionCalendario() {
                     <button
                       key={day}
                       onClick={() => setSelectedDate(day)}
-                      className={`h-10 rounded-xl text-sm font-semibold transition-all flex items-center justify-center relative ${
-                        isSelected
+                      className={`h-10 rounded-xl text-sm font-semibold transition-all flex items-center justify-center relative cursor-pointer ${isSelected
                           ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
                           : isBusy
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
-                          : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-100'
-                      }`}
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-100'
+                        }`}
                     >
                       {day}
                       {isBusy && !isSelected && (
@@ -142,7 +162,6 @@ export default function GestionCalendario() {
               </div>
             </div>
 
-            {/* Configuración del día */}
             <div className="md:col-span-1 bg-white rounded-3xl border border-slate-100 shadow-sm p-8 flex flex-col justify-between space-y-6">
               <div className="space-y-5">
                 <div>
@@ -150,6 +169,16 @@ export default function GestionCalendario() {
                   <h3 className="text-xl font-bold text-slate-900 mt-0.5" style={{ fontFamily: 'Plus Jakarta Sans' }}>
                     {selectedDate} de Agosto, 2026
                   </h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">ID de publicación</label>
+                  <input
+                    value={publicationId}
+                    onChange={e => setPublicationId(e.target.value)}
+                    placeholder="UUID de tu servicio"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50 outline-none focus:border-blue-500"
+                  />
                 </div>
 
                 <div className="space-y-3">
@@ -161,12 +190,12 @@ export default function GestionCalendario() {
                   ].map(([val, label, desc]) => (
                     <button
                       key={val}
+                      type="button"
                       onClick={() => setAvailabilityStatus(val)}
-                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all ${
-                        availabilityStatus === val
+                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all cursor-pointer ${availabilityStatus === val
                           ? 'border-blue-500 bg-blue-50/50 shadow-sm'
                           : 'border-slate-100 bg-slate-50 hover:border-slate-200'
-                      }`}
+                        }`}
                     >
                       <div className="text-xs font-bold text-slate-900">{label}</div>
                       <div className="text-[11px] text-slate-500 mt-0.5">{desc}</div>
@@ -178,8 +207,18 @@ export default function GestionCalendario() {
                   <div className="space-y-2 pt-2">
                     <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Horario</label>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="time" defaultValue="09:00" className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50 outline-none focus:border-blue-500" />
-                      <input type="time" defaultValue="18:00" className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50 outline-none focus:border-blue-500" />
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={e => setStartTime(e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50 outline-none focus:border-blue-500"
+                      />
+                      <input
+                        type="time"
+                        value={endTime}
+                        onChange={e => setEndTime(e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50 outline-none focus:border-blue-500"
+                      />
                     </div>
                   </div>
                 )}
@@ -187,7 +226,7 @@ export default function GestionCalendario() {
 
               <button
                 onClick={handleSave}
-                className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md"
+                className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-95 shadow-md cursor-pointer"
                 style={{ background: '#2563EB' }}
               >
                 Guardar disponibilidad

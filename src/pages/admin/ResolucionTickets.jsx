@@ -1,46 +1,48 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom' 
-
-const INITIAL_TICKETS = [
-  { 
-    id: 'TK-001', 
-    user: 'María González', 
-    email: 'maria@example.com', 
-    issue: 'Error al cargar imagen de perfil', 
-    description: 'Intenté subir mi foto de perfil pero la página se queda cargando y nunca se actualiza.', 
-    status: 'abierto', 
-    priority: 'alta', 
-    date: '24/08/2026' 
-  },
-  { 
-    id: 'TK-002', 
-    user: 'Pedro Vega', 
-    email: 'pedro@example.com', 
-    issue: 'Perfil verificación pendiente', 
-    description: 'Subí mis antecedentes hace 3 días y mi cuenta sigue apareciendo sin verificar.', 
-    status: 'en_proceso', 
-    priority: 'media', 
-    date: '23/08/2026' 
-  },
-  { 
-    id: 'TK-003', 
-    user: 'Ana Torres', 
-    email: 'ana@example.com', 
-    issue: 'Reseña inapropiada reportada', 
-    description: 'Un cliente dejó un comentario ofensivo en mi perfil que no tiene relación con el trabajo realizado.', 
-    status: 'resuelto', 
-    priority: 'baja', 
-    date: '22/08/2026' 
-  },
-]
+import { useUser } from '../../context/useUser'
+import { getTickets } from '../../services/api'
 
 export default function ResolucionTickets() {
-  const navigate = useNavigate() // 👈 Activamos el hook de navegación
-  const [tickets, setTickets] = useState(INITIAL_TICKETS)
-  const [selectedTicket, setSelectedTicket] = useState(INITIAL_TICKETS[0])
+  const navigate = useNavigate()
+  const { token } = useUser()
+  const [tickets, setTickets] = useState([])
+  const [selectedTicket, setSelectedTicket] = useState(null)
   const [adminResponse, setAdminResponse] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  // Cargar los tickets reales desde la API al montar el componente
+  useEffect(() => {
+    getTickets(token)
+      .then(data => {
+        const rawTickets = Array.isArray(data) ? data : data.tickets || []
+        
+        // Mapeamos los datos de la API a la estructura que usa la vista
+        const formatted = rawTickets.map(t => ({
+          id: `TK-${t.id || t.ticket_id || '000'}`,
+          user: t.nombre_usuario || t.user || 'Usuario Anónimo',
+          email: t.email || t.correo || 'Sin correo',
+          issue: t.mensaje || t.issue || 'Reporte de soporte',
+          description: t.descripcion || t.description || t.mensaje || 'Sin descripción detallada.',
+          status: t.estado || 'abierto',
+          priority: t.prioridad || 'media',
+          date: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'Hoy'
+        }))
+
+        setTickets(formatted)
+        if (formatted.length > 0) {
+          setSelectedTicket(formatted[0])
+        }
+      })
+      .catch((error) => {
+        console.error("Error al cargar los tickets:", error)
+        setTickets([])
+      })
+      .finally(() => setLoading(false))
+  }, [token])
 
   const handleStatusChange = (newStatus) => {
+    if (!selectedTicket) return
     const updated = tickets.map(t => t.id === selectedTicket.id ? { ...t, status: newStatus } : t)
     setTickets(updated)
     setSelectedTicket({ ...selectedTicket, status: newStatus })
@@ -48,7 +50,7 @@ export default function ResolucionTickets() {
 
   const handleSendResponse = (e) => {
     e.preventDefault()
-    if (!adminResponse.trim()) return
+    if (!adminResponse.trim() || !selectedTicket) return
     alert(`Respuesta enviada a ${selectedTicket.email}: "${adminResponse}"`)
     setAdminResponse('')
     handleStatusChange('resuelto')
@@ -60,8 +62,7 @@ export default function ResolucionTickets() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-            {/* Arreglado con navigate para ir a la ruta del admin */}
-            <button onClick={() => navigate('/admin')} className="hover:text-blue-600 transition-colors">Dashboard</button>
+            <button onClick={() => navigate('/admin')} className="hover:text-blue-600 transition-colors cursor-pointer">Dashboard</button>
             <span>/</span>
             <span className="text-slate-800 font-medium">Resolución de Tickets</span>
           </div>
@@ -69,7 +70,6 @@ export default function ResolucionTickets() {
           <p className="text-sm text-slate-600 mt-0.5">Gestiona, responde y da cierre a los reportes de los usuarios.</p>
         </div>
         
-        {/* Botón de volver arreglado con navigate */}
         <button
           onClick={() => navigate('/admin')}
           className="self-start sm:self-auto px-4 py-2.5 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm cursor-pointer"
@@ -85,25 +85,31 @@ export default function ResolucionTickets() {
         <article className="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm space-y-3 h-fit">
           <h2 className="font-bold text-slate-950 px-3 text-base">Tickets ({tickets.length})</h2>
           <div className="space-y-2">
-            {tickets.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => setSelectedTicket(t)}
-                className={`p-4 rounded-2xl cursor-pointer transition-all border ${selectedTicket.id === t.id ? 'bg-blue-50/50 border-blue-200 shadow-sm' : 'bg-white border-transparent hover:bg-slate-50'}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-xs font-bold text-blue-600">{t.id}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                    t.status === 'abierto' ? 'bg-red-100 text-red-700' :
-                    t.status === 'en_proceso' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    {t.status.replace('_', ' ')}
-                  </span>
+            {loading ? (
+              <p className="text-xs text-slate-400 text-center py-8">Cargando tickets...</p>
+            ) : tickets.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-8">No hay tickets registrados.</p>
+            ) : (
+              tickets.map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => setSelectedTicket(t)}
+                  className={`p-4 rounded-2xl cursor-pointer transition-all border ${selectedTicket?.id === t.id ? 'bg-blue-50/50 border-blue-200 shadow-sm' : 'bg-white border-transparent hover:bg-slate-50'}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-xs font-bold text-blue-600">{t.id}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                      t.status === 'abierto' ? 'bg-red-100 text-red-700' :
+                      t.status === 'en_proceso' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {t.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="font-bold text-sm text-slate-800 truncate">{t.issue}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t.user}</p>
                 </div>
-                <p className="font-bold text-sm text-slate-800 truncate">{t.issue}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{t.user}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </article>
 
@@ -168,7 +174,7 @@ export default function ResolucionTickets() {
             </>
           ) : (
             <div className="text-center py-16 text-slate-400">
-              Selecciona un ticket de la izquierda para ver los detalles.
+              {loading ? 'Cargando tickets...' : 'Selecciona un ticket de la izquierda para ver los detalles.'}
             </div>
           )}
         </article>

@@ -22,11 +22,12 @@ export default function Home() {
     if (search.trim()) params.set('q', search.trim())
     if (comuna) params.set('comuna', comuna)
 
-    navigate(`/galeria${params.size ? `?${params.toString()}` : ''}`)
+    const queryString = params.toString()
+    navigate(queryString ? `/galeria?${queryString}` : '/galeria')
   }
 
   return (
-    <div>
+    <div className="min-h-[calc(100vh-4rem)]">
       {/* Hero */}
       <section className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563EB 60%, #3b82f6 100%)' }}>
         <div className="absolute inset-0 opacity-10"
@@ -70,7 +71,7 @@ export default function Home() {
               </div>
 
               <button type="submit"
-                className="px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg shrink-0"
+                className="px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg shrink-0 cursor-pointer"
                 style={{ background: '#F97316' }}>
                 Buscar
               </button>
@@ -86,14 +87,14 @@ export default function Home() {
             <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1">Categorías</p>
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>¿Qué necesitas hoy?</h2>
           </div>
-          <button onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block">
+          <button type="button" onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block cursor-pointer">
             Ver todo →
           </button>
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
           {CATEGORIES.map(({ icon, label }) => (
-            <button key={label} onClick={() => navigate(`/galeria?categoria=${encodeURIComponent(label)}`)}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group">
+            <button key={label} type="button" onClick={() => navigate(`/galeria?categoria=${encodeURIComponent(label)}`)}
+              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer">
               <span className="text-2xl group-hover:scale-110 transition-transform">{icon}</span>
               <span className="text-xs font-medium text-slate-600 text-center leading-tight">{label}</span>
             </button>
@@ -109,7 +110,7 @@ export default function Home() {
               <p className="text-xs font-semibold text-orange-500 uppercase tracking-widest mb-1">Destacados</p>
               <h2 className="text-2xl md:text-3xl font-bold text-slate-900" style={{ fontFamily: 'Plus Jakarta Sans' }}>Servicios recomendados</h2>
             </div>
-            <button onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block">
+            <button type="button" onClick={() => navigate('/galeria')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 hidden sm:block cursor-pointer">
               Ver galería →
             </button>
           </div>
@@ -131,8 +132,8 @@ export default function Home() {
               <h2 className="text-2xl md:text-3xl font-extrabold mb-2" style={{ fontFamily: 'Plus Jakarta Sans' }}>¿Eres un profesional?</h2>
               <p className="text-orange-100 text-sm md:text-base">Publica tus servicios y conecta con miles de clientes en Chile.</p>
             </div>
-            <button onClick={() => navigate('/registro')}
-              className="px-8 py-3.5 bg-white rounded-xl font-bold text-orange-500 hover:shadow-xl transition-all hover:scale-105 shrink-0 text-sm">
+            <button type="button" onClick={() => navigate('/registro')}
+              className="px-8 py-3.5 bg-white rounded-xl font-bold text-orange-500 hover:shadow-xl transition-all hover:scale-105 shrink-0 text-sm cursor-pointer">
               Comenzar ahora
             </button>
           </div>
