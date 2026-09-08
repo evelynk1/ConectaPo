@@ -34,14 +34,29 @@ export function normalizeUser(user = {}) {
   return {
     ...user,
     name: name || user.email || 'Usuario',
-    rol: ['ADMIN', 'CLIENTE', 'PROFESIONAL'].includes(role) ? role : 'CLIENTE',
+    rol: ['ADMIN', 'CLIENTE'].includes(role) ? role : 'CLIENTE',
     rolOriginal: role,
   }
 }
 
-// ==========================================
+/// ==========================================
 // AUTH Y REGISTRO
 // ==========================================
+
+// 1. PRIMERO DEFINIMOS NORMALIZEUSER AQUÍ:
+export function normalizeUser(user = {}) {
+  const role = String(user.rol || user.role || '').toUpperCase()
+  const name = user.nombres || user.nombre || user.name || [user.usuario_nombre, user.usuario_apellido].filter(Boolean).join(' ')
+
+  return {
+    ...user,
+    name: name || user.email || 'Usuario',
+    rol: ['ADMIN', 'CLIENTE'].includes(role) ? role : 'CLIENTE',
+    rolOriginal: role,
+  }
+}
+
+// 2. Y LUEGO EL LOGIN YA PUEDE USARLA SIN PROBLEMAS:
 export async function loginUser(credentials) {
   const data = await request('/api/auth/login', {
     method: 'POST',
@@ -286,7 +301,7 @@ export async function obtenerBloquesHorarios(publicacionId, token) {
       Authorization: `Bearer ${token}`
     }
   });
-  
+
   if (!response.ok) throw new Error('Error al obtener los bloques horarios.');
   return response.json();
 }
@@ -299,7 +314,7 @@ export async function eliminarBloqueHorario(bloqueId, token) {
       Authorization: `Bearer ${token}`
     }
   });
-  
+
   if (!response.ok) throw new Error('Error al eliminar el bloque horario.');
   return response.json();
 }
