@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ConectaPoLogo from '../../components/Logo';
-import { useUser } from '../../context/useUser'; // <-- el hook del contexto
+import { useUser } from '../../context/useUser';
+import ModalRecuperarPassword from '../../components/ModalRecuperarPassword';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const navigate = useNavigate();
 
-  // const { login } = useUser(); // <-- 2. Extraemos la función login
+  // 1. ESTADO PARA CONTROLAR EL MODAL
+  const [showRecuperarModal, setShowRecuperarModal] = useState(false);
+
+  // 2. DESCOMENTAMOS ESTO: Extraemos la función login para arreglar el error
+  const { login } = useUser();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -43,8 +48,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex">
-      {/* Columna Izquierda: Banner decorativo (Se mantiene igual) */}
+    <div className="min-h-[calc(100vh-4rem)] flex relative">
+      {/* Columna Izquierda: Banner decorativo */}
       <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 bg-blue-800"
         style={{ background: 'linear-gradient(145deg, #1e40af, #2563EB)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '28px 28px' }} />
@@ -81,7 +86,15 @@ export default function Login() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">Contraseña</label>
-                <button type="button" className="text-xs text-blue-600 hover:text-blue-700 font-medium">¿Olvidaste tu contraseña?</button>
+
+                {/* 3. CONECTAMOS EL BOTÓN AL ESTADO DEL MODAL */}
+                <button
+                  type="button"
+                  onClick={() => setShowRecuperarModal(true)}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
               </div>
               <input
                 value={pass}
@@ -101,6 +114,11 @@ export default function Login() {
           </form>
         </div>
       </div>
+
+      {/* 4. RENDERIZAMOS EL MODAL AQUÍ */}
+      {showRecuperarModal && (
+        <ModalRecuperarPassword onClose={() => setShowRecuperarModal(false)} />
+      )}
     </div>
   );
 }

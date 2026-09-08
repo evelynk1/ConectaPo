@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import ConectaPoLogo from '../../components/Logo'
 
+
 export default function MiPerfil() {
   const navigate = useNavigate()
-  
+
   // Estado para el menú móvil del Navbar
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
@@ -35,23 +36,23 @@ export default function MiPerfil() {
 
   // Estado para los datos de inicio de sesión (si se llega a usar desde los modales)
   const [loginData, setLoginData] = useState({ email: '', password: '' })
-  
+
   // Estado para la lista de servicios (con propiedad 'status' para pausar/eliminar)
   const [services, setServices] = useState([
-    { 
-      id: 1, 
-      title: 'Instalación de Grifería y Sanitarios', 
-      price: '$25.000', 
-      cat: 'Gasfitería', 
+    {
+      id: 1,
+      title: 'Instalación de Grifería y Sanitarios',
+      price: '$25.000',
+      cat: 'Gasfitería',
       desc: 'Servicio profesional garantizado en zona oriente.',
       image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop',
       status: 'activo'
     },
-    { 
-      id: 2, 
-      title: 'Detección y Reparación de Fugas', 
-      price: '$40.000', 
-      cat: 'Urgencias', 
+    {
+      id: 2,
+      title: 'Detección y Reparación de Fugas',
+      price: '$40.000',
+      cat: 'Urgencias',
       desc: 'Equipo especializado para ubicar fugas ocultas.',
       image: 'https://images.unsplash.com/photo-1542013936693-893e3d6e1c2b?w=400&h=300&fit=crop',
       status: 'activo'
@@ -59,12 +60,12 @@ export default function MiPerfil() {
   ])
 
   // Estado para el formulario de nuevo servicio
-  const [newService, setNewService] = useState({ 
-    title: '', 
-    price: '', 
-    cat: 'Gasfitería', 
-    desc: '', 
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop' 
+  const [newService, setNewService] = useState({
+    title: '',
+    price: '',
+    cat: 'Gasfitería',
+    desc: '',
+    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&h=300&fit=crop'
   })
 
   // Funciones de subida de imágenes
@@ -126,7 +127,7 @@ export default function MiPerfil() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-      
+
       {/* NAVBAR SUPERIOR */}
       <nav className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -137,7 +138,7 @@ export default function MiPerfil() {
           <div className="hidden md:flex items-center gap-6">
             <Link to="/" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Home</Link>
             <Link to="/galeria#galeria" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Servicios</Link>
-            
+
             <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
               <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-sm overflow-hidden">
                 <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover" />
@@ -189,7 +190,7 @@ export default function MiPerfil() {
 
       {/* CONTENEDOR PRINCIPAL */}
       <div className="max-w-5xl mx-auto px-6">
-        
+
         {/* Cabecera del perfil */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 mb-8 relative z-10">
           <div className="flex items-end gap-5">
@@ -207,7 +208,7 @@ export default function MiPerfil() {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={() => {
               setEditForm(userProfile)
               setShowEditProfileModal(true)
@@ -223,13 +224,13 @@ export default function MiPerfil() {
 
         {/* CONTENEDOR DE DOS COLUMNAS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* Columna Izquierda */}
           <div className="lg:col-span-1 space-y-6">
-            
+
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-3">
               <h3 className="font-semibold text-slate-900 text-sm mb-3">Herramientas de usuario</h3>
-              
+
               <button onClick={() => navigate('/panel/calendario')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all text-sm font-semibold text-left cursor-pointer">
                 <span className="text-xl">📅</span>
                 <div>
@@ -268,9 +269,9 @@ export default function MiPerfil() {
               <h3 className="font-semibold text-slate-900 text-sm mb-4">Información de contacto</h3>
               <div className="space-y-3">
                 {[
-                  ['📧', userProfile.email], 
-                  ['📞', userProfile.phone], 
-                  ['📍', userProfile.location], 
+                  ['📧', userProfile.email],
+                  ['📞', userProfile.phone],
+                  ['📍', userProfile.location],
                   ['🏗️', userProfile.experience]
                 ].map(([icon, val]) => (
                   <div key={val} className="flex items-center gap-3 text-sm text-slate-600">
@@ -295,7 +296,7 @@ export default function MiPerfil() {
 
           {/* Columna Derecha */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="font-semibold text-slate-900 text-sm mb-3">Descripción</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
@@ -309,7 +310,7 @@ export default function MiPerfil() {
                   <h3 className="font-semibold text-slate-900 text-sm">Mis publicaciones y servicios</h3>
                   <p className="text-xs text-slate-500">Gestiona los servicios que ofreces a los clientes</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowNewServiceModal(true)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:opacity-95 cursor-pointer"
                   style={{ background: '#F97316' }}
@@ -390,13 +391,13 @@ export default function MiPerfil() {
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2">Foto de perfil</label>
                 <div className="flex items-center gap-4">
                   <img src={editForm.avatar} alt="Avatar preview" className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     accept="image/*"
                     onChange={handleAvatarChange}
                     className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
@@ -407,20 +408,20 @@ export default function MiPerfil() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre completo</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={editForm.name}
-                    onChange={e => setEditForm({...editForm, name: e.target.value})}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Título u oficio</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={editForm.title}
-                    onChange={e => setEditForm({...editForm, title: e.target.value})}
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                   />
@@ -430,20 +431,20 @@ export default function MiPerfil() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico</label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     value={editForm.email}
-                    onChange={e => setEditForm({...editForm, email: e.target.value})}
+                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={editForm.phone}
-                    onChange={e => setEditForm({...editForm, phone: e.target.value})}
+                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                   />
@@ -453,20 +454,20 @@ export default function MiPerfil() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Ubicación / Comuna</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={editForm.location}
-                    onChange={e => setEditForm({...editForm, location: e.target.value})}
+                    onChange={e => setEditForm({ ...editForm, location: e.target.value })}
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Años de experiencia</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={editForm.experience}
-                    onChange={e => setEditForm({...editForm, experience: e.target.value})}
+                    onChange={e => setEditForm({ ...editForm, experience: e.target.value })}
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                   />
@@ -475,10 +476,10 @@ export default function MiPerfil() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Habilidades (separadas por comas)</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={editForm.skills}
-                  onChange={e => setEditForm({...editForm, skills: e.target.value})}
+                  onChange={e => setEditForm({ ...editForm, skills: e.target.value })}
                   placeholder="Ej: Gasfitería, Plomería, Calefont"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                 />
@@ -486,10 +487,10 @@ export default function MiPerfil() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Biografía / Descripción</label>
-                <textarea 
-                  rows={4} 
+                <textarea
+                  rows={4}
                   value={editForm.bio}
-                  onChange={e => setEditForm({...editForm, bio: e.target.value})}
+                  onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 resize-none"
                 />
               </div>
@@ -519,11 +520,11 @@ export default function MiPerfil() {
             <form onSubmit={handleCreateService} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Título del servicio</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Ej. Reparación de calefont"
                   value={newService.title}
-                  onChange={e => setNewService({...newService, title: e.target.value})}
+                  onChange={e => setNewService({ ...newService, title: e.target.value })}
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                 />
@@ -532,20 +533,20 @@ export default function MiPerfil() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Precio aproximado</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Ej. $30.000"
                     value={newService.price}
-                    onChange={e => setNewService({...newService, price: e.target.value})}
+                    onChange={e => setNewService({ ...newService, price: e.target.value })}
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Categoría</label>
-                  <select 
+                  <select
                     value={newService.cat}
-                    onChange={e => setNewService({...newService, cat: e.target.value})}
+                    onChange={e => setNewService({ ...newService, cat: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white"
                   >
                     <option value="Gasfitería">Gasfitería</option>
@@ -558,8 +559,8 @@ export default function MiPerfil() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Subir foto del servicio</label>
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   accept="image/*"
                   onChange={handleImageChange}
                   className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
@@ -575,11 +576,11 @@ export default function MiPerfil() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción breve</label>
-                <textarea 
-                  rows={3} 
+                <textarea
+                  rows={3}
                   placeholder="Detalla qué incluye tu servicio..."
                   value={newService.desc}
-                  onChange={e => setNewService({...newService, desc: e.target.value})}
+                  onChange={e => setNewService({ ...newService, desc: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 resize-none"
                 />
               </div>
@@ -612,11 +613,11 @@ export default function MiPerfil() {
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   placeholder="ejemplo@correo.com"
                   value={loginData.email}
-                  onChange={e => setLoginData({...loginData, email: e.target.value})}
+                  onChange={e => setLoginData({ ...loginData, email: e.target.value })}
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                 />
@@ -624,11 +625,11 @@ export default function MiPerfil() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Contraseña</label>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   placeholder="••••••••"
                   value={loginData.password}
-                  onChange={e => setLoginData({...loginData, password: e.target.value})}
+                  onChange={e => setLoginData({ ...loginData, password: e.target.value })}
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                 />
