@@ -110,10 +110,12 @@ export const obtenerPublicaciones = async (req, res) => {
                 u.primer_apellido AS usuario_apellido,
                 u.telefono AS usuario_telefono,
                 u.email AS usuario_email,
-                u.avatar_url AS usuario_avatar -- ¡Esta es la magia que faltaba!
+                u.avatar_url AS usuario_avatar,
+                c.nombre AS comuna_nombre 
             FROM negocio.publicaciones p
             JOIN negocio.oficios o ON p.oficio_id = o.id
             JOIN auth.usuarios u ON p.usuario_id = u.id
+            LEFT JOIN ubicaciones.comunas c ON p.comuna_id = c.id -- 📍 Y aquí cruzamos con tu tabla de ubicaciones
             WHERE p.estado = 'ACTIVA'
             ORDER BY p.created_at DESC;
         `;
@@ -299,10 +301,12 @@ export const obtenerPublicacion = async (req, res) => {
         const { rows } = await pool.query(`
             SELECT p.*, o.nombre AS oficio_nombre, u.nombres AS usuario_nombre,
                    u.primer_apellido AS usuario_apellido, u.telefono AS usuario_telefono,
-                   u.avatar_url AS usuario_avatar -- ¡Agregado aquí también!
+                   u.avatar_url AS usuario_avatar,
+                   c.nombre AS comuna_nombre 
             FROM negocio.publicaciones p
             JOIN negocio.oficios o ON o.id = p.oficio_id
             JOIN auth.usuarios u ON u.id = p.usuario_id
+            LEFT JOIN ubicaciones.comunas c ON p.comuna_id = c.id 
             WHERE p.id = $1 AND p.estado = 'ACTIVA'`, [id]);
 
         if (!rows.length) return res.status(404).json({ error: 'Publicación no encontrada.' });
