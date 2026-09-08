@@ -30,7 +30,6 @@ async function request(path, options = {}) {
 }
 
 function authHeaders(token) {
-<<<<<<< HEAD
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -44,34 +43,13 @@ export function normalizeUser(user = {}) {
     rol: ['ADMIN', 'CLIENTE'].includes(role) ? role : 'CLIENTE',
     rolOriginal: role,
   }
-=======
-  return token
-    ? { Authorization: `Bearer ${token}` }
-    : {}
->>>>>>> 9fb780d1fb8953dfe1c0910ad1a95c937e32582a
 }
 
 /// ==========================================
 // AUTH Y REGISTRO
 // ==========================================
 
-<<<<<<< HEAD
-// 1. PRIMERO DEFINIMOS NORMALIZEUSER AQUÍ:
-export function normalizeUser(user = {}) {
-  const role = String(user.rol || user.role || '').toUpperCase()
-  const name = user.nombres || user.nombre || user.name || [user.usuario_nombre, user.usuario_apellido].filter(Boolean).join(' ')
 
-  return {
-    ...user,
-    name: name || user.email || 'Usuario',
-    rol: ['ADMIN', 'CLIENTE'].includes(role) ? role : 'CLIENTE',
-    rolOriginal: role,
-  }
-}
-
-// 2. Y LUEGO EL LOGIN YA PUEDE USARLA SIN PROBLEMAS:
-=======
->>>>>>> 9fb780d1fb8953dfe1c0910ad1a95c937e32582a
 export async function loginUser(credentials) {
   const data = await request('/api/auth/login', {
     method: 'POST',
@@ -518,31 +496,6 @@ export async function guardarHorariosMasivos(
   return response.json()
 }
 
-<<<<<<< HEAD
-export async function obtenerBloquesHorarios(publicacionId, token) {
-  // Coincide con: router.get('/publicacion/:publicacion_id')
-  const response = await fetch(`${API_URL}/api/horarios/publicacion/${publicacionId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) throw new Error('Error al obtener los bloques horarios.');
-  return response.json();
-}
-
-export async function eliminarBloqueHorario(bloqueId, token) {
-  // Coincide con: router.delete('/bloque/:id') --> ¡Aquí estaba el error de la ruta!
-  const response = await fetch(`${API_URL}/api/horarios/bloque/${bloqueId}`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) throw new Error('Error al eliminar el bloque horario.');
-  return response.json();
-=======
 export async function obtenerBloquesHorarios(
   publicacionId,
   token,
@@ -592,7 +545,6 @@ export async function eliminarBloqueHorario(
   }
 
   return response.json()
->>>>>>> 9fb780d1fb8953dfe1c0910ad1a95c937e32582a
 }
 
 // ==========================================
